@@ -247,7 +247,7 @@ exports.getNotes = async (req, res) => {
       SELECT n.*, m.nom as matiere, m.coefficient
       FROM notes n JOIN matieres m ON n.matiere_id = m.id
       WHERE n.eleve_id = ? AND n.periode = ?
-      ORDER BY m.nom, n.created_at
+      ORDER BY m.nom, n.date_evaluation, n.created_at
     `, [eleve_id, periode]);
 
     // Calcul moyennes par matière
@@ -285,10 +285,13 @@ exports.getPresences = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Accès refusé' });
 
     const [presences] = await db.query(`
-      SELECT p.*, c.nom as classe_nom
-      FROM presences p LEFT JOIN classes c ON p.classe_id = c.id
+      SELECT p.*, c.nom as classe_nom,
+             m.nom as matiere_nom
+      FROM presences p
+      LEFT JOIN classes c ON p.classe_id = c.id
+      LEFT JOIN matieres m ON p.matiere_id = m.id
       WHERE p.eleve_id = ?
-      ORDER BY p.date DESC LIMIT 60
+      ORDER BY p.date DESC, p.creneau_horaire LIMIT 120
     `, [eleve_id]);
 
     const [stats] = await db.query(`

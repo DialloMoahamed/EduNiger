@@ -4,74 +4,73 @@ const db = require('../config/database');
 exports.getPresences = async (req, res) => {
   try {
     const { classe_id, date, eleve_id } = req.query;
-    
+
     let query = `
-      SELECT p.*, 
-             e.nom as eleve_nom, 
+      SELECT p.*,
+             e.nom as eleve_nom,
              e.prenom as eleve_prenom,
              e.matricule,
              c.nom as classe_nom,
-             u.nom as created_by_nom
+             u.nom as created_by_nom,
+             m.nom as matiere_nom
       FROM presences p
       JOIN eleves e ON p.eleve_id = e.id
       JOIN classes c ON p.classe_id = c.id
       LEFT JOIN users u ON p.created_by = u.id
+      LEFT JOIN matieres m ON p.matiere_id = m.id
       WHERE 1=1
     `;
-    
+
     const params = [];
-    
+
     if (classe_id) {
       query += ' AND p.classe_id = ?';
       params.push(classe_id);
     }
-    
+
     if (date) {
       query += ' AND p.date = ?';
       params.push(date);
     }
-    
+
     if (eleve_id) {
       query += ' AND p.eleve_id = ?';
       params.push(eleve_id);
     }
-    
-    query += ' ORDER BY p.date DESC, e.nom';
-    
+
+    query += ' ORDER BY p.date DESC, p.creneau_horaire, e.nom';
+
     const [presences] = await db.query(query, params);
-    
+
     res.json({
       success: true,
       count: presences.length,
-      presences
+      presences,
     });
   } catch (error) {
     console.error('Erreur getPresences:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
-// Enregistrer les présences d'une classe
-exports.markPresences = async (req, res) => {
+// ── Enregistrer les présences d'une classe (multi-cours par jour) ──
+// Route : POST /presences/multi
+// Permet à chaque enseignant d'enregistrer la présence pour sa matière
+// et son créneau horaire — plusieurs enregistrements par jour sont possibles.
+exports.markPresencesMulti = async (req, res) => {
   try {
-    const { classe_id, date, presences } = req.body;
-    
+    const { classe_id, date, matiere_id, creneau_horaire, presences } = req.body;
+
     if (!classe_id || !date || !presences || !Array.isArray(presences)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Données invalides' 
-      });
+      return res.status(400).json({ success: false, message: 'Données invalides' });
     }
-    
-    // Supprimer les présences existantes pour cette date et classe
+
+    // Supprimer les présences existantes pour ce triplet (classe, date, matière, créneau)
     await db.query(
-      'DELETE FROM presences WHERE classe_id = ? AND date = ?',
-      [classe_id, date]
+      'DELETE FROM presences WHERE classe_id = ? AND date = ? AND matiere_id = ? AND creneau_horaire = ?',
+      [classe_id, date, matiere_id || null, creneau_horaire || null]
     );
-    
+
     // Insérer les nouvelles présences
     const values = presences.map(p => [
       p.eleve_id,
@@ -79,50 +78,136 @@ exports.markPresences = async (req, res) => {
       date,
       p.statut || 'present',
       p.motif || null,
-      req.user.id
+      matiere_id || null,
+      creneau_horaire || null,
+      req.user.id,
     ]);
-    
+
     if (values.length > 0) {
       await db.query(
-        `INSERT INTO presences 
-         (eleve_id, classe_id, date, statut, motif, created_by)
+        `INSERT INTO presences
+         (eleve_id, classe_id, date, statut, motif, matiere_id, creneau_horaire, created_by)
          VALUES ?`,
         [values]
       );
     }
-    
-    // Envoyer SMS aux parents d'élèves absents
+
+    // Envoyer notification aux parents d'élèves absents
     const absents = presences.filter(p => p.statut === 'absent');
-    
     for (const absent of absents) {
       const [eleves] = await db.query(
         'SELECT telephone_parent, nom, prenom FROM eleves WHERE id = ?',
         [absent.eleve_id]
       );
-      
       if (eleves.length > 0 && eleves[0].telephone_parent) {
-        const message = `Absence de ${eleves[0].prenom} ${eleves[0].nom} le ${date}`;
-        
+        const [matiereRow] = matiere_id
+          ? await db.query('SELECT nom FROM matieres WHERE id = ?', [matiere_id])
+          : [[]];
+        const matNom = matiereRow[0]?.nom ? ` en ${matiereRow[0].nom}` : '';
+        const message = `Absence de ${eleves[0].prenom} ${eleves[0].nom}${matNom} le ${date}${creneau_horaire ? ` (${creneau_horaire})` : ''}`;
         await db.query(
-          `INSERT INTO notifications 
-           (telephone, message, type, eleve_id)
-           VALUES (?, ?, 'absence', ?)`,
+          `INSERT INTO notifications (telephone, message, type, eleve_id) VALUES (?, ?, 'absence', ?)`,
           [eleves[0].telephone_parent, message, absent.eleve_id]
         );
       }
     }
-    
+
     res.json({
       success: true,
       message: 'Présences enregistrées avec succès',
-      absents: absents.length
+      absents: absents.length,
+    });
+  } catch (error) {
+    console.error('Erreur markPresencesMulti:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+};
+
+// ── Ancien endpoint (garde compatibilité) ──
+exports.markPresences = async (req, res) => {
+  try {
+    const { classe_id, date, presences } = req.body;
+
+    if (!classe_id || !date || !presences || !Array.isArray(presences)) {
+      return res.status(400).json({ success: false, message: 'Données invalides' });
+    }
+
+    // Supprimer les présences existantes pour cette date/classe/sans matière
+    await db.query(
+      'DELETE FROM presences WHERE classe_id = ? AND date = ? AND matiere_id IS NULL',
+      [classe_id, date]
+    );
+
+    const values = presences.map(p => [
+      p.eleve_id,
+      classe_id,
+      date,
+      p.statut || 'present',
+      p.motif || null,
+      null,
+      null,
+      req.user.id,
+    ]);
+
+    if (values.length > 0) {
+      await db.query(
+        `INSERT INTO presences
+         (eleve_id, classe_id, date, statut, motif, matiere_id, creneau_horaire, created_by)
+         VALUES ?`,
+        [values]
+      );
+    }
+
+    const absents = presences.filter(p => p.statut === 'absent');
+    for (const absent of absents) {
+      const [eleves] = await db.query(
+        'SELECT telephone_parent, nom, prenom FROM eleves WHERE id = ?',
+        [absent.eleve_id]
+      );
+      if (eleves.length > 0 && eleves[0].telephone_parent) {
+        const message = `Absence de ${eleves[0].prenom} ${eleves[0].nom} le ${date}`;
+        await db.query(
+          `INSERT INTO notifications (telephone, message, type, eleve_id) VALUES (?, ?, 'absence', ?)`,
+          [eleves[0].telephone_parent, message, absent.eleve_id]
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Présences enregistrées avec succès',
+      absents: absents.length,
     });
   } catch (error) {
     console.error('Erreur markPresences:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+};
+
+// ── Historique du jour par matière/créneau ─────────────────────
+// Route : GET /presences/historique?classe_id=X&date=Y
+exports.getHistoriqueJour = async (req, res) => {
+  try {
+    const { classe_id, date } = req.query;
+    if (!classe_id || !date) {
+      return res.status(400).json({ success: false, message: 'classe_id et date requis' });
+    }
+
+    const [rows] = await db.query(`
+      SELECT p.*,
+             e.nom as eleve_nom, e.prenom as eleve_prenom,
+             m.nom as matiere_nom
+      FROM presences p
+      JOIN eleves e ON p.eleve_id = e.id
+      LEFT JOIN matieres m ON p.matiere_id = m.id
+      WHERE p.classe_id = ? AND p.date = ?
+      ORDER BY p.creneau_horaire, m.nom, e.nom
+    `, [classe_id, date]);
+
+    res.json({ success: true, historique: rows });
+  } catch (error) {
+    console.error('Erreur getHistoriqueJour:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -130,7 +215,7 @@ exports.markPresences = async (req, res) => {
 exports.getElevePresenceStats = async (req, res) => {
   try {
     const [stats] = await db.query(`
-      SELECT 
+      SELECT
         COUNT(*) as total,
         SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as presents,
         SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END) as absents,
@@ -139,17 +224,11 @@ exports.getElevePresenceStats = async (req, res) => {
       FROM presences
       WHERE eleve_id = ?
     `, [req.params.eleve_id]);
-    
-    res.json({
-      success: true,
-      stats: stats[0]
-    });
+
+    res.json({ success: true, stats: stats[0] });
   } catch (error) {
     console.error('Erreur getElevePresenceStats:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -157,9 +236,9 @@ exports.getElevePresenceStats = async (req, res) => {
 exports.getClassePresenceStats = async (req, res) => {
   try {
     const { date } = req.query;
-    
+
     let query = `
-      SELECT 
+      SELECT
         COUNT(*) as total,
         SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as presents,
         SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END) as absents,
@@ -167,26 +246,14 @@ exports.getClassePresenceStats = async (req, res) => {
       FROM presences
       WHERE classe_id = ?
     `;
-    
     const params = [req.params.classe_id];
-    
-    if (date) {
-      query += ' AND date = ?';
-      params.push(date);
-    }
-    
+    if (date) { query += ' AND date = ?'; params.push(date); }
+
     const [stats] = await db.query(query, params);
-    
-    res.json({
-      success: true,
-      stats: stats[0]
-    });
+    res.json({ success: true, stats: stats[0] });
   } catch (error) {
     console.error('Erreur getClassePresenceStats:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -198,79 +265,69 @@ exports.downloadListeClasse = async (req, res) => {
 
     const [classes] = await db.query(
       `SELECT c.*, u.nom as enseignant_nom, u.prenom as enseignant_prenom,
-              COUNT(e.id) as effectif
-       FROM classes c
-       LEFT JOIN users u ON c.enseignant_id = u.id
-       LEFT JOIN eleves e ON c.id = e.classe_id
-       WHERE c.id = ? GROUP BY c.id`,
+              (SELECT COUNT(*) FROM eleves WHERE classe_id = c.id) as nb_eleves
+       FROM classes c LEFT JOIN users u ON c.enseignant_id = u.id
+       WHERE c.id = ?`,
       [classe_id]
     );
-    if (classes.length === 0)
-      return res.status(404).json({ success: false, message: 'Classe non trouvée' });
+    if (classes.length === 0) return res.status(404).json({ success: false, message: 'Classe non trouvée' });
 
-    const classe = classes[0];
     const [ecoles] = await db.query('SELECT * FROM ecole LIMIT 1');
     const ecole = ecoles[0] || {};
 
     const [eleves] = await db.query(
-      `SELECT * FROM eleves WHERE classe_id = ? ORDER BY nom, prenom`,
+      'SELECT * FROM eleves WHERE classe_id = ? ORDER BY nom, prenom',
       [classe_id]
     );
 
-    const pdfBuffer = await generateListeClassePDF({ ecole, classe, eleves });
-
-    const filename = `liste_${classe.nom.replace(/\s/g,'_')}.pdf`;
+    const pdfBuffer = await generateListeClassePDF({ ecole, classe: classes[0], eleves });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Content-Disposition', `inline; filename="liste_${classes[0].nom.replace(/\s+/g,'_')}.pdf"`);
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Erreur downloadListeClasse:', error);
-    res.status(500).json({ success: false, message: 'Erreur lors de la génération' });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
-// ── Télécharger la feuille d'appel avec statuts ──────────────
-exports.downloadFeuilleAppel = async (req, res) => {
+// ── Feuille d'appel avec statuts ─────────────────────────────
+exports.downloadAppelPDF = async (req, res) => {
   try {
     const { classe_id, date } = req.params;
     const { generateFeuilleAppelPDF } = require('../utils/generateListePDF');
 
     const [classes] = await db.query(
-      `SELECT c.*, u.nom as enseignant_nom, u.prenom as enseignant_prenom,
-              COUNT(e.id) as effectif
-       FROM classes c
-       LEFT JOIN users u ON c.enseignant_id = u.id
-       LEFT JOIN eleves e ON c.id = e.classe_id
-       WHERE c.id = ? GROUP BY c.id`,
+      `SELECT c.*, u.nom as enseignant_nom, u.prenom as enseignant_prenom
+       FROM classes c LEFT JOIN users u ON c.enseignant_id = u.id
+       WHERE c.id = ?`,
       [classe_id]
     );
-    if (classes.length === 0)
-      return res.status(404).json({ success: false, message: 'Classe non trouvée' });
+    if (classes.length === 0) return res.status(404).json({ success: false, message: 'Classe non trouvée' });
 
-    const classe = classes[0];
     const [ecoles] = await db.query('SELECT * FROM ecole LIMIT 1');
     const ecole = ecoles[0] || {};
 
     const [eleves] = await db.query(
-      `SELECT * FROM eleves WHERE classe_id = ? ORDER BY nom, prenom`,
+      'SELECT * FROM eleves WHERE classe_id = ? ORDER BY nom, prenom',
       [classe_id]
     );
 
-    const [presencesRows] = await db.query(
-      `SELECT eleve_id, statut FROM presences WHERE classe_id = ? AND date = ?`,
+    const [presRows] = await db.query(
+      'SELECT eleve_id, statut FROM presences WHERE classe_id = ? AND date = ?',
       [classe_id, date]
     );
-    const presences = {};
-    presencesRows.forEach(p => { presences[p.eleve_id] = p.statut; });
+    const presencesMap = {};
+    presRows.forEach(p => { presencesMap[p.eleve_id] = p.statut; });
 
-    const pdfBuffer = await generateFeuilleAppelPDF({ ecole, classe, eleves, presences, date });
-
-    const filename = `appel_${classe.nom.replace(/\s/g,'_')}_${date}.pdf`;
+    const pdfBuffer = await generateFeuilleAppelPDF({
+      ecole, classe: classes[0], eleves,
+      presences: presencesMap, date,
+    });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Content-Disposition', `inline; filename="appel_${classes[0].nom.replace(/\s+/g,'_')}_${date}.pdf"`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Erreur downloadFeuilleAppel:', error);
-    res.status(500).json({ success: false, message: 'Erreur lors de la génération' });
+    console.error('Erreur downloadAppelPDF:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };

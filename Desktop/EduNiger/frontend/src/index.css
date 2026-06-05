@@ -1232,3 +1232,38 @@ body {
 
 /* Divider */
 [data-theme="dark"] .divider { background: #2D3148; }
+
+/* ============ MODE SOMBRE — MESSAGERIE ============ */
+/* Fix : textarea de messagerie (inline-style background: var(--bg))
+   Le texte doit être visible en mode sombre */
+[data-theme="dark"] textarea {
+  color: #F0F2F8;
+  background: #12151F;
+  border-color: #2D3148;
+}
+[data-theme="dark"] textarea::placeholder {
+  color: #4A5270;
+}
+
+/* Tous les inputs natifs non-classés (inline style) */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+  color: #F0F2F8;
+}
+[data-theme="dark"] input::placeholder {
+  color: #4A5270;
+}
+
+/* Zone de message envoyé (bulle verte) — déjà blanc, OK */
+/* Zone de message reçu (var(--bg-card)) */
+[data-theme="dark"] .msg-bubble-received {
+  background: #1E2235;
+  border-color: #2D3148;
+  color: #E0E4F0;
+}
+
+/* ============ MODE SOMBRE — PRÉSENCES MULTI-COURS ============ */
+[data-theme="dark"] .badge-neutral {
+  background: #1E2235;
+  color: #7880A0;
+  border-color: #2D3148;
+}
