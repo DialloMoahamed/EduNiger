@@ -25,7 +25,8 @@ app.use('/api/presences', require('./routes/presenceRoutes'));
 app.use('/api/notes',     require('./routes/noteRoutes'));
 app.use('/api/ecole',     require('./routes/ecoleRoutes'));
 app.use('/api/parent',    require('./routes/parentRoutes'));
-app.use('/api/messages', require('./routes/messageRoutes'));
+app.use('/api/messages',        require('./routes/messageRoutes'));
+app.use('/api/emploi-du-temps', require('./routes/emploiDuTempsRoutes'));
 
 app.get('/api', (req, res) => res.json({ message: 'EduNiger API', version: '2.0.0', status: 'active' }));
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route non trouvée' }));

@@ -15,7 +15,7 @@ export function ParentAbsences() {
 
   useEffect(() => {
     if (!enfantActif) return;
-    parentApi(`/parent/enfant/presences?eleve_id=${enfantActif.id}`)
+    parentApi(`/parent/presences?eleve_id=${enfantActif.id}`)
       .then(d => { if (d.success) setData(d); });
   }, [enfantActif?.id]);
 
@@ -63,7 +63,13 @@ export function ParentAbsences() {
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 130px',
                 padding: '13px 20px', borderTop: '1px solid var(--border)', alignItems: 'center' }}>
                 <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                  {new Date(p.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                  {(() => {
+                    // p.date peut être une string "2025-11-15", un objet Date sérialisé,
+                    // ou une string ISO complète — on normalise dans les 3 cas
+                    const raw = typeof p.date === 'string' ? p.date.slice(0, 10) : new Date(p.date).toISOString().slice(0, 10);
+                    const [y, m, d] = raw.split('-').map(Number);
+                    return new Date(y, m - 1, d).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+                  })()}
                 </div>
                 <span style={{ display: 'inline-block', padding: '3px 12px', borderRadius: 6,
                   background: s.bg, color: s.color, fontSize: 12, fontWeight: 600 }}>{s.label}</span>
@@ -90,7 +96,7 @@ export function ParentBulletins() {
     try {
       const token = localStorage.getItem('parent_token');
       const res   = await fetch(
-        `${API_URL}/parent/enfant/bulletin/${enfantActif.id}/${encodeURIComponent(periode)}`,
+        `${API_URL}/parent/bulletin/${enfantActif.id}/${encodeURIComponent(periode)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error();

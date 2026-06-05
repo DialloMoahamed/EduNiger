@@ -1131,3 +1131,104 @@ body {
   border-color: #2D3148;
   color: #7880A0;
 }
+
+/* ============ MODE SOMBRE — CORRECTIONS COMPLÉMENTAIRES ============ */
+
+/* Inputs select option (fond dropdown natif) */
+[data-theme="dark"] select option {
+  background: #1A1D27;
+  color: #F0F2F8;
+}
+
+/* Modal close button */
+[data-theme="dark"] .modal-close {
+  background: #12151F;
+  color: #7880A0;
+}
+[data-theme="dark"] .modal-close:hover {
+  background: rgba(229,62,62,0.15);
+  color: #FC8181;
+}
+
+/* Stat card icons — adapter les fonds colorés */
+[data-theme="dark"] .stat-card-icon.green { background: rgba(56,161,105,0.15); }
+[data-theme="dark"] .stat-card-icon.blue  { background: rgba(49,130,206,0.15); }
+[data-theme="dark"] .stat-card-icon.amber { background: rgba(245,166,35,0.15); }
+[data-theme="dark"] .stat-card-icon.red   { background: rgba(229,62,62,0.15);  }
+
+/* Badges */
+[data-theme="dark"] .badge-success { background: rgba(56,161,105,0.18);  color: #68D391; }
+[data-theme="dark"] .badge-danger  { background: rgba(229,62,62,0.18);   color: #FC8181; }
+[data-theme="dark"] .badge-warning { background: rgba(214,158,46,0.18);  color: #F6E05E; }
+[data-theme="dark"] .badge-info    { background: rgba(49,130,206,0.18);  color: #63B3ED; }
+[data-theme="dark"] .badge-neutral { background: #1E2235; color: #7880A0; border-color: #2D3148; }
+
+/* Alertes */
+[data-theme="dark"] .alert-success { background: rgba(56,161,105,0.12);  color: #68D391; border-color: rgba(56,161,105,0.25); }
+[data-theme="dark"] .alert-danger  { background: rgba(229,62,62,0.12);   color: #FC8181; border-color: rgba(229,62,62,0.25); }
+[data-theme="dark"] .alert-warning { background: rgba(214,158,46,0.12);  color: #F6E05E; border-color: rgba(214,158,46,0.25); }
+[data-theme="dark"] .alert-info    { background: rgba(49,130,206,0.12);  color: #63B3ED; border-color: rgba(49,130,206,0.25); }
+
+/* Note chips */
+[data-theme="dark"] .note-excellent { background: rgba(56,161,105,0.18);  color: #68D391; }
+[data-theme="dark"] .note-bien      { background: rgba(49,130,206,0.18);  color: #63B3ED; }
+[data-theme="dark"] .note-moyen     { background: rgba(214,158,46,0.18);  color: #F6E05E; }
+[data-theme="dark"] .note-faible    { background: rgba(229,62,62,0.18);   color: #FC8181; }
+
+/* Login page */
+[data-theme="dark"] .login-page { background: #0F1117; }
+
+/* Presence buttons */
+[data-theme="dark"] .presence-status-btn.present.selected { background: #276749; border-color: #276749; }
+[data-theme="dark"] .presence-status-btn.absent.selected  { background: #9B2335; border-color: #9B2335; }
+[data-theme="dark"] .presence-status-btn.retard.selected  { background: #975A16; border-color: #975A16; }
+[data-theme="dark"] .presence-status-btn.absent_justifie.selected { background: #1A4A7A; border-color: #1A4A7A; }
+
+/* Mini chart bars */
+[data-theme="dark"] .mini-bar { background: var(--primary-light); }
+
+/* Scrollbar (Webkit) */
+[data-theme="dark"] ::-webkit-scrollbar { width: 6px; height: 6px; }
+[data-theme="dark"] ::-webkit-scrollbar-track { background: #12151F; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2D3148; border-radius: 3px; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #3D4168; }
+
+/* Ghost button */
+[data-theme="dark"] .btn-ghost { color: #B0B8D0; }
+[data-theme="dark"] .btn-ghost:hover:not(:disabled) { background: #1E2235; }
+
+/* Topbar school name badge */
+[data-theme="dark"] .topbar-school-name {
+  background: #12151F;
+  border-color: #2D3148;
+  color: #7880A0;
+}
+
+/* Attendance ring label */
+[data-theme="dark"] .attendance-ring-label { color: #F0F2F8; }
+
+/* User card hover */
+[data-theme="dark"] .user-card:hover { background: rgba(255,255,255,0.08); }
+
+/* Nav item dropdown menus */
+[data-theme="dark"] .nav-item:hover { background: rgba(255,255,255,0.09); }
+
+/* Page header */
+[data-theme="dark"] .page-header-left h1 { color: #F0F2F8; }
+
+/* Card titles */
+[data-theme="dark"] .card-title { color: #F0F2F8; }
+
+/* Table head */
+[data-theme="dark"] .table th { background: #12151F; color: #7880A0; }
+[data-theme="dark"] .table td { color: #E0E4F0; border-color: #1E2235; }
+[data-theme="dark"] .table tbody tr:last-child td { border-bottom: none; }
+
+/* Spinner */
+[data-theme="dark"] .spinner { border-color: #2D3148; border-top-color: var(--primary-light); }
+
+/* Empty state */
+[data-theme="dark"] .empty-state h3 { color: #B0B8D0; }
+
+/* Divider */
+[data-theme="dark"] .divider { background: #2D3148; }

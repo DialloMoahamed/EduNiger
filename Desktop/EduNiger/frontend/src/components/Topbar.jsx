@@ -9,6 +9,7 @@ const pageTitles = {
   '/presences':  { title: 'Gestion des Présences', subtitle: 'Appel et suivi des absences' },
   '/notes':      { title: 'Notes & Bulletins',     subtitle: 'Évaluations et bulletins scolaires' },
   '/enseignants':{ title: 'Enseignants',            subtitle: 'Personnel enseignant' },
+  '/emploi-du-temps':{ title: 'Emploi du temps',        subtitle: 'Plannings hebdomadaires par classe' },
   '/rapports':   { title: 'Rapports & Statistiques',subtitle: 'Analyses et indicateurs' },
   '/parametres': { title: 'Paramètres',             subtitle: 'Configuration du système' },
   '/profil':     { title: 'Mon Profil',             subtitle: 'Informations personnelles et préférences' },

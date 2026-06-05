@@ -21,6 +21,7 @@ import Profil from "./pages/Profil";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Messagerie from "./pages/Messagerie";
+import EmploiDuTemps from "./pages/EmploiDuTemps";
 
 // ── Pages espace parent ──────────────────────────────────────────────────────
 import LoginParent from "./pages/parent/LoginParent";
@@ -29,8 +30,8 @@ import ParentNotes from "./pages/parent/ParentNotes";
 import ParentProfil from "./pages/parent/ParentProfil";
 import {
   ParentAbsences,
-  ParentBulletins,
 } from "./pages/parent/ParentAbsencesBulletins";
+import ParentEmploiDuTemps from "./pages/parent/ParentEmploiDuTemps";
 
 // ✅ NOUVEAU : page messagerie dédiée à l'espace parent
 import ParentMessages from "./pages/parent/ParentMessages";
@@ -84,8 +85,8 @@ function App() {
           <Route path="/parent/login"     element={<LoginParent />} />
           <Route path="/parent/dashboard" element={<ParentDashboard />} />
           <Route path="/parent/notes"     element={<ParentNotes />} />
-          <Route path="/parent/absences"  element={<ParentAbsences />} />
-          <Route path="/parent/bulletins" element={<ParentBulletins />} />
+          <Route path="/parent/absences"        element={<ParentAbsences />} />
+          <Route path="/parent/emploi-du-temps" element={<ParentEmploiDuTemps />} />
           <Route path="/parent/profil"    element={<ParentProfil />} />
 
           {/* ✅ CORRECTION : route /parent/messages ajoutée ici,
@@ -163,6 +164,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profil />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/emploi-du-temps"
+            element={
+              <ProtectedRoute>
+                <EmploiDuTemps />
               </ProtectedRoute>
             }
           />

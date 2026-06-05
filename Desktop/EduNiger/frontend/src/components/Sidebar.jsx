@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { path: "/presences",   icon: "📋", label: "Présences",        section: "GESTION" },
   { path: "/notes",       icon: "📝", label: "Notes & Bulletins",section: "GESTION" },
   { path: "/enseignants", icon: "👩‍🏫", label: "Enseignants",      section: "GESTION" },
+  { path: "/emploi-du-temps", icon: "🗓️", label: "Emploi du temps", section: "GESTION" },
   { path: "/rapports",    icon: "📈", label: "Rapports",         section: "ANALYSES" },
   { path: "/messagerie",  icon: "💬", label: "Messagerie",       section: "ANALYSES", hasBadge: true },
   { path: "/parametres",  icon: "⚙️", label: "Paramètres",       section: "SYSTÈME" },

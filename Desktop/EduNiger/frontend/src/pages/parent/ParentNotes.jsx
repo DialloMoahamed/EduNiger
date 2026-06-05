@@ -30,7 +30,7 @@ export default function ParentNotes() {
   useEffect(() => {
     if (!enfantActif) return;
     setLoading(true);
-    parentApi(`/parent/enfant/notes?eleve_id=${enfantActif.id}&periode=${encodeURIComponent(periode)}`)
+    parentApi(`/parent/notes?eleve_id=${enfantActif.id}&periode=${encodeURIComponent(periode)}`)
       .then(d => { if (d.success) setData(d); })
       .finally(() => setLoading(false));
   }, [enfantActif?.id, periode]);
