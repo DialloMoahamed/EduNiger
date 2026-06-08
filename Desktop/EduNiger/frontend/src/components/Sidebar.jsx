@@ -5,21 +5,32 @@ import { useTheme } from "../context/ThemeContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
-const NAV_ITEMS = [
-  { path: "/",            icon: "📊", label: "Tableau de bord",  section: "PRINCIPAL" },
-  { path: "/eleves",      icon: "👨‍🎓", label: "Élèves",          section: "GESTION" },
-  { path: "/classes",     icon: "🏫", label: "Classes",          section: "GESTION" },
-  { path: "/presences",   icon: "📋", label: "Présences",        section: "GESTION" },
-  { path: "/notes",       icon: "📝", label: "Notes & Bulletins",section: "GESTION" },
-  { path: "/enseignants", icon: "👩‍🏫", label: "Enseignants",      section: "GESTION" },
+// Items visibles par l'administrateur (accès complet)
+const NAV_ITEMS_ADMIN = [
+  { path: "/",            icon: "📊", label: "Tableau de bord",   section: "PRINCIPAL" },
+  { path: "/eleves",      icon: "👨‍🎓", label: "Élèves",           section: "GESTION" },
+  { path: "/classes",     icon: "🏫", label: "Classes",           section: "GESTION" },
+  { path: "/presences",   icon: "📋", label: "Présences",         section: "GESTION" },
+  { path: "/notes",       icon: "📝", label: "Notes & Bulletins", section: "GESTION" },
+  { path: "/enseignants", icon: "👩‍🏫", label: "Enseignants",       section: "GESTION" },
   { path: "/emploi-du-temps", icon: "🗓️", label: "Emploi du temps", section: "GESTION" },
-  { path: "/rapports",    icon: "📈", label: "Rapports",         section: "ANALYSES" },
-  { path: "/messagerie",  icon: "💬", label: "Messagerie",       section: "ANALYSES", hasBadge: true },
-  { path: "/parametres",  icon: "⚙️", label: "Paramètres",       section: "SYSTÈME" },
+  { path: "/rapports",    icon: "📈", label: "Rapports",          section: "ANALYSES" },
+  { path: "/messagerie",  icon: "💬", label: "Messagerie",        section: "ANALYSES", hasBadge: true },
+  { path: "/parametres",  icon: "⚙️", label: "Paramètres",        section: "SYSTÈME" },
+];
+
+// Items visibles par l'enseignant (lecture seule sur EDT et liste profs)
+const NAV_ITEMS_ENSEIGNANT = [
+  { path: "/",                          icon: "📊", label: "Tableau de bord",   section: "PRINCIPAL" },
+  { path: "/presences",                 icon: "📋", label: "Présences",         section: "GESTION" },
+  { path: "/notes",                     icon: "📝", label: "Notes & Bulletins", section: "GESTION" },
+  { path: "/teacher/emploi-du-temps",   icon: "🗓️", label: "Emploi du temps",   section: "GESTION" },
+  { path: "/teacher/enseignants",       icon: "👩‍🏫", label: "Enseignants",       section: "GESTION" },
+  { path: "/messagerie",                icon: "💬", label: "Messagerie",        section: "ANALYSES", hasBadge: true },
 ];
 
 export default function Sidebar() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isEnseignant } = useAuth();
   const { isDark, toggleTheme }   = useTheme();
   const location  = useLocation();
   const navigate  = useNavigate();
@@ -48,10 +59,12 @@ export default function Sidebar() {
     ? `${user.prenom?.[0] || ""}${user.nom?.[0] || ""}`.toUpperCase()
     : "U";
 
+  // Choisir les items selon le rôle
+  const NAV_ITEMS = isEnseignant() ? NAV_ITEMS_ENSEIGNANT : NAV_ITEMS_ADMIN;
+
   // Grouper par section
   const sections = {};
   NAV_ITEMS.forEach((item) => {
-    if (!isAdmin() && item.section === "SYSTÈME") return;
     const sec = item.section || "AUTRE";
     if (!sections[sec]) sections[sec] = [];
     sections[sec].push(item);
@@ -140,3 +153,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

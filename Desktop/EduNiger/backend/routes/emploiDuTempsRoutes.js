@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const ctrl    = require('../controllers/emploiDuTempsController');
-const { auth, isAdmin } = require('../middleware/auth');
+const { auth, isAdmin, isEnseignant } = require('../middleware/auth');
 const db = require('../config/database');
 
 // Matieres (nécessaire pour le formulaire admin)
@@ -16,6 +16,12 @@ router.get('/matieres', auth, async (req, res) => {
 
 // Parent — lecture seule (via eleve_id)
 router.get('/parent', auth, ctrl.getForParent);
+
+// Enseignant — emploi du temps de TOUTES ses classes assignées (lecture seule)
+router.get('/enseignant/mes-classes', auth, isEnseignant, ctrl.getForEnseignant);
+
+// Enseignant — liste de tous les enseignants (lecture seule)
+router.get('/enseignant/liste-enseignants', auth, isEnseignant, ctrl.getListeEnseignants);
 
 // Admin/Enseignant — lecture par classe
 router.get('/classe/:classe_id', auth, ctrl.getByClasse);

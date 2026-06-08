@@ -31,7 +31,7 @@ const NAV = [
   { path: '/parent/absences',  icon: '📋', label: 'Absences',    section: 'SUIVI' },
   { path: '/parent/bulletins', icon: '📄', label: 'Bulletins',   section: 'SUIVI' },
   { path: '/parent/emploi-du-temps', icon: '🗓️', label: 'Emploi du temps', section: 'SUIVI' },
-  { path: '/parent/messages',  icon: '💬', label: 'Messages',    section: 'COMMUNICATION' },
+  { path: '/parent/messages',  icon: '💬', label: 'Messages',    section: 'COMMUNICATION', hasBadge: true },
   { path: '/parent/profil',    icon: '👤', label: 'Mon profil',  section: 'COMPTE' },
 ];
 
@@ -55,6 +55,24 @@ export default function ParentLayout({ children }) {
     () => JSON.parse(localStorage.getItem('parent_enfant_actif') || 'null') || enfants[0] || null
   );
   const [enfantMenuOpen, setEnfantMenuOpen] = useState(false);
+  const [nonLus, setNonLus] = useState(0);
+
+  useEffect(() => {
+    const fetchNonLus = async () => {
+      try {
+        const token = localStorage.getItem('parent_token');
+        if (!token) return;
+        const res = await fetch(`${API_URL}/messages/non-lus`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success) setNonLus(data.non_lus || 0);
+      } catch {}
+    };
+    fetchNonLus();
+    const interval = setInterval(fetchNonLus, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!localStorage.getItem('parent_token')) navigate('/parent/login');
@@ -112,6 +130,9 @@ export default function ParentLayout({ children }) {
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
+                  {item.hasBadge && nonLus > 0 && (
+                    <span className="nav-badge">{nonLus > 99 ? '99+' : nonLus}</span>
+                  )}
                 </Link>
               ))}
             </div>

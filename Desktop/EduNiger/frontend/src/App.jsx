@@ -22,6 +22,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Messagerie from "./pages/Messagerie";
 import EmploiDuTemps from "./pages/EmploiDuTemps";
+import TeacherEmploiDuTemps from "./pages/TeacherEmploiDuTemps";
+import TeacherEnseignants   from "./pages/TeacherEnseignants";
 
 // ── Pages espace parent ──────────────────────────────────────────────────────
 import LoginParent from "./pages/parent/LoginParent";
@@ -180,6 +182,24 @@ function App() {
             element={
               <ProtectedRoute>
                 <Messagerie />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ── Espace Enseignant (lecture seule) ─────────────────────── */}
+          <Route
+            path="/teacher/emploi-du-temps"
+            element={
+              <ProtectedRoute>
+                <TeacherEmploiDuTemps />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/enseignants"
+            element={
+              <ProtectedRoute>
+                <TeacherEnseignants />
               </ProtectedRoute>
             }
           />

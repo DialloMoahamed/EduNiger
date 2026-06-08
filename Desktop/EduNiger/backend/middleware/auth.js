@@ -28,4 +28,11 @@ const isParent = (req, res, next) => {
   next();
 };
 
-module.exports = { auth, isAdmin, isParent };
+const isEnseignant = (req, res, next) => {
+  if (req.user.role !== 'enseignant') {
+    return res.status(403).json({ success: false, message: 'Accès réservé aux enseignants.' });
+  }
+  next();
+};
+
+module.exports = { auth, isAdmin, isParent, isEnseignant };
