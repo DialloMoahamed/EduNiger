@@ -16,6 +16,7 @@ const NAV_ITEMS_ADMIN = [
   { path: "/emploi-du-temps", icon: "🗓️", label: "Emploi du temps", section: "GESTION" },
   { path: "/rapports",    icon: "📈", label: "Rapports",          section: "ANALYSES" },
   { path: "/messagerie",  icon: "💬", label: "Messagerie",        section: "ANALYSES", hasBadge: true },
+  { path: "/notifications", icon: "📲", label: "Notifications SMS", section: "ANALYSES" },
   { path: "/parametres",  icon: "⚙️", label: "Paramètres",        section: "SYSTÈME" },
 ];
 

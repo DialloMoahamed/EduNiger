@@ -23,20 +23,19 @@ import ResetPassword from "./pages/ResetPassword";
 import Messagerie from "./pages/Messagerie";
 import EmploiDuTemps from "./pages/EmploiDuTemps";
 import TeacherEmploiDuTemps from "./pages/TeacherEmploiDuTemps";
-import TeacherEnseignants   from "./pages/TeacherEnseignants";
+import TeacherEnseignants from "./pages/TeacherEnseignants";
 
 // ── Pages espace parent ──────────────────────────────────────────────────────
 import LoginParent from "./pages/parent/LoginParent";
 import ParentDashboard from "./pages/parent/ParentDashboard";
 import ParentNotes from "./pages/parent/ParentNotes";
 import ParentProfil from "./pages/parent/ParentProfil";
-import {
-  ParentAbsences,
-} from "./pages/parent/ParentAbsencesBulletins";
+import { ParentAbsences } from "./pages/parent/ParentAbsencesBulletins";
 import ParentEmploiDuTemps from "./pages/parent/ParentEmploiDuTemps";
 
 // ✅ NOUVEAU : page messagerie dédiée à l'espace parent
 import ParentMessages from "./pages/parent/ParentMessages";
+import Notifications from "./pages/Notifications";
 
 // ── Layout administration ────────────────────────────────────────────────────
 function AppLayout({ children }) {
@@ -75,26 +74,29 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* ── Authentification générale ── */}
-          <Route path="/login"          element={<Login />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password"  element={<ResetPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* ── Espace Parent ──────────────────────────────────────────────
               Ces routes sont protégées par ParentLayout (qui vérifie
               parent_token dans localStorage). Elles NE passent PAS
               par <ProtectedRoute> car celui-ci lit le token admin.
           ─────────────────────────────────────────────────────────────── */}
-          <Route path="/parent/login"     element={<LoginParent />} />
+          <Route path="/parent/login" element={<LoginParent />} />
           <Route path="/parent/dashboard" element={<ParentDashboard />} />
-          <Route path="/parent/notes"     element={<ParentNotes />} />
-          <Route path="/parent/absences"        element={<ParentAbsences />} />
-          <Route path="/parent/emploi-du-temps" element={<ParentEmploiDuTemps />} />
-          <Route path="/parent/profil"    element={<ParentProfil />} />
+          <Route path="/parent/notes" element={<ParentNotes />} />
+          <Route path="/parent/absences" element={<ParentAbsences />} />
+          <Route
+            path="/parent/emploi-du-temps"
+            element={<ParentEmploiDuTemps />}
+          />
+          <Route path="/parent/profil" element={<ParentProfil />} />
 
           {/* ✅ CORRECTION : route /parent/messages ajoutée ici,
               avec ParentMessages (utilise ParentLayout + parent_token).
               Ne passe surtout PAS par <ProtectedRoute> ! */}
-          <Route path="/parent/messages"  element={<ParentMessages />} />
+          <Route path="/parent/messages" element={<ParentMessages />} />
 
           {/* ── Espace Administration ───────────────────────────────────── */}
           <Route
@@ -182,6 +184,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Messagerie />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <Notifications />
               </ProtectedRoute>
             }
           />
