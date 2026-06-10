@@ -4,31 +4,31 @@ const db = require('../config/database');
 exports.getAllEleves = async (req, res) => {
   try {
     const { classe_id, search } = req.query;
-    
+
     let query = `
       SELECT e.*, c.nom as classe_nom, c.niveau 
       FROM eleves e 
       LEFT JOIN classes c ON e.classe_id = c.id 
-      WHERE 1=1
+      WHERE e.tenant_id = ?
     `;
-    
-    const params = [];
-    
+
+    const params = [req.tenantId];
+
     if (classe_id) {
       query += ' AND e.classe_id = ?';
       params.push(classe_id);
     }
-    
+
     if (search) {
       query += ' AND (e.nom LIKE ? OR e.prenom LIKE ? OR e.matricule LIKE ?)';
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
-    
+
     query += ' ORDER BY e.nom, e.prenom';
-    
+
     const [eleves] = await db.query(query, params);
-    
+
     res.json({
       success: true,
       count: eleves.length,
@@ -36,10 +36,7 @@ exports.getAllEleves = async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur getAllEleves:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -50,27 +47,18 @@ exports.getEleveById = async (req, res) => {
       `SELECT e.*, c.nom as classe_nom, c.niveau 
        FROM eleves e 
        LEFT JOIN classes c ON e.classe_id = c.id 
-       WHERE e.id = ?`,
-      [req.params.id]
+       WHERE e.id = ? AND e.tenant_id = ?`,
+      [req.params.id, req.tenantId]
     );
-    
+
     if (eleves.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Élève non trouvé' 
-      });
+      return res.status(404).json({ success: false, message: 'Élève non trouvé' });
     }
-    
-    res.json({
-      success: true,
-      eleve: eleves[0]
-    });
+
+    res.json({ success: true, eleve: eleves[0] });
   } catch (error) {
     console.error('Erreur getEleveById:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -81,28 +69,25 @@ exports.createEleve = async (req, res) => {
       matricule, nom, prenom, date_naissance, lieu_naissance,
       sexe, classe_id, nom_parent, telephone_parent, adresse
     } = req.body;
-    
+
     if (!matricule || !nom || !prenom || !date_naissance || !sexe) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Champs obligatoires manquants' 
-      });
+      return res.status(400).json({ success: false, message: 'Champs obligatoires manquants' });
     }
-    
+
     const [result] = await db.query(
       `INSERT INTO eleves 
-       (matricule, nom, prenom, date_naissance, lieu_naissance, sexe, 
+       (tenant_id, matricule, nom, prenom, date_naissance, lieu_naissance, sexe, 
         classe_id, nom_parent, telephone_parent, adresse)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [matricule, nom, prenom, date_naissance, lieu_naissance, sexe, 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.tenantId, matricule, nom, prenom, date_naissance, lieu_naissance, sexe,
        classe_id, nom_parent, telephone_parent, adresse]
     );
-    
+
     const [newEleve] = await db.query(
       'SELECT * FROM eleves WHERE id = ?',
       [result.insertId]
     );
-    
+
     res.status(201).json({
       success: true,
       message: 'Élève créé avec succès',
@@ -111,15 +96,9 @@ exports.createEleve = async (req, res) => {
   } catch (error) {
     console.error('Erreur createEleve:', error);
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Ce matricule existe déjà' 
-      });
+      return res.status(400).json({ success: false, message: 'Ce matricule existe déjà' });
     }
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -130,40 +109,31 @@ exports.updateEleve = async (req, res) => {
       matricule, nom, prenom, date_naissance, lieu_naissance,
       sexe, classe_id, nom_parent, telephone_parent, adresse
     } = req.body;
-    
+
     const [result] = await db.query(
       `UPDATE eleves SET 
        matricule = ?, nom = ?, prenom = ?, date_naissance = ?,
        lieu_naissance = ?, sexe = ?, classe_id = ?,
        nom_parent = ?, telephone_parent = ?, adresse = ?
-       WHERE id = ?`,
+       WHERE id = ? AND tenant_id = ?`,
       [matricule, nom, prenom, date_naissance, lieu_naissance, sexe,
-       classe_id, nom_parent, telephone_parent, adresse, req.params.id]
+       classe_id, nom_parent, telephone_parent, adresse,
+       req.params.id, req.tenantId]
     );
-    
+
     if (result.affectedRows === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Élève non trouvé' 
-      });
+      return res.status(404).json({ success: false, message: 'Élève non trouvé' });
     }
-    
+
     const [updatedEleve] = await db.query(
       'SELECT * FROM eleves WHERE id = ?',
       [req.params.id]
     );
-    
-    res.json({
-      success: true,
-      message: 'Élève modifié avec succès',
-      eleve: updatedEleve[0]
-    });
+
+    res.json({ success: true, message: 'Élève modifié avec succès', eleve: updatedEleve[0] });
   } catch (error) {
     console.error('Erreur updateEleve:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -171,27 +141,18 @@ exports.updateEleve = async (req, res) => {
 exports.deleteEleve = async (req, res) => {
   try {
     const [result] = await db.query(
-      'DELETE FROM eleves WHERE id = ?',
-      [req.params.id]
+      'DELETE FROM eleves WHERE id = ? AND tenant_id = ?',
+      [req.params.id, req.tenantId]
     );
-    
+
     if (result.affectedRows === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Élève non trouvé' 
-      });
+      return res.status(404).json({ success: false, message: 'Élève non trouvé' });
     }
-    
-    res.json({
-      success: true,
-      message: 'Élève supprimé avec succès'
-    });
+
+    res.json({ success: true, message: 'Élève supprimé avec succès' });
   } catch (error) {
     console.error('Erreur deleteEleve:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -205,17 +166,12 @@ exports.getStats = async (req, res) => {
         SUM(CASE WHEN sexe = 'F' THEN 1 ELSE 0 END) as filles,
         COUNT(DISTINCT classe_id) as classes
       FROM eleves
-    `);
-    
-    res.json({
-      success: true,
-      stats: stats[0]
-    });
+      WHERE tenant_id = ?
+    `, [req.tenantId]);
+
+    res.json({ success: true, stats: stats[0] });
   } catch (error) {
     console.error('Erreur getStats:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };

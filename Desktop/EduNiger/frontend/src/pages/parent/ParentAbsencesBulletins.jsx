@@ -176,6 +176,22 @@ export function ParentBulletins() {
   const { enfants } = useParentAuth();
   const enfantActif = JSON.parse(localStorage.getItem('parent_enfant_actif') || 'null') || enfants[0];
   const [loading, setLoading] = useState('');
+  const [acces, setAcces] = useState(null);       // null = chargement, false = refusé, true = autorisé
+  const [notification, setNotification] = useState(null);
+  const [checkLoading, setCheckLoading] = useState(true);
+
+  // ── Vérifier l'accès dès que l'enfant actif change ────────
+  useEffect(() => {
+    if (!enfantActif) { setAcces(false); setCheckLoading(false); return; }
+    setCheckLoading(true);
+    parentApi(`/parent/bulletin-acces?eleve_id=${enfantActif.id}`)
+      .then(d => {
+        setAcces(d.success ? d.acces : false);
+        setNotification(d.notification || null);
+      })
+      .catch(() => setAcces(false))
+      .finally(() => setCheckLoading(false));
+  }, [enfantActif?.id]);
 
   const download = async (periode) => {
     setLoading(periode);
@@ -197,6 +213,60 @@ export function ParentBulletins() {
     } finally { setLoading(''); }
   };
 
+  // ── Chargement ────────────────────────────────────────────
+  if (checkLoading) {
+    return (
+      <ParentLayout>
+        <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>⏳</div>
+          <div style={{ fontSize: 14 }}>Vérification des droits d'accès...</div>
+        </div>
+      </ParentLayout>
+    );
+  }
+
+  // ── Accès refusé : pas encore de notification bulletin ────
+  if (!acces) {
+    return (
+      <ParentLayout>
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+            Bulletins scolaires
+          </h2>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            {enfantActif ? `${enfantActif.prenom} ${enfantActif.nom} — ${enfantActif.classe_nom}` : ''}
+          </p>
+        </div>
+
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', padding: '60px 24px', textAlign: 'center',
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 16, gap: 16,
+        }}>
+          <div style={{ fontSize: 56 }}>🔒</div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+              Bulletins non disponibles
+            </div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 400, lineHeight: 1.6 }}>
+              Les bulletins de <strong>{enfantActif?.prenom} {enfantActif?.nom}</strong> ne sont pas encore disponibles.
+              Vous recevrez une notification SMS dès que l'administration les aura générés.
+            </div>
+          </div>
+          <div style={{
+            padding: '12px 20px', background: '#fff8e1',
+            border: '1px solid #fde68a', borderRadius: 10,
+            fontSize: 13, color: '#92400e', maxWidth: 400,
+          }}>
+            💡 L'accès aux bulletins est activé automatiquement lorsque l'école envoie la notification de disponibilité.
+          </div>
+        </div>
+      </ParentLayout>
+    );
+  }
+
+  // ── Accès autorisé ────────────────────────────────────────
   return (
     <ParentLayout>
       <div style={{ marginBottom: 24 }}>
@@ -207,6 +277,24 @@ export function ParentBulletins() {
           {enfantActif ? `${enfantActif.prenom} ${enfantActif.nom} — ${enfantActif.classe_nom}` : ''}
         </p>
       </div>
+
+      {/* Bandeau notification reçue */}
+      {notification && (
+        <div style={{
+          marginBottom: 16, padding: '12px 18px',
+          background: '#e8f5ee', border: '1px solid #a7f3d0',
+          borderRadius: 10, fontSize: 13, color: '#065f46',
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+        }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>✅</span>
+          <div>
+            <strong>Bulletin disponible</strong> — Notification reçue le{' '}
+            {new Date(notification.created_at).toLocaleDateString('fr-FR', {
+              day: '2-digit', month: 'long', year: 'numeric',
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {PERIODES.map(p => (

@@ -312,6 +312,44 @@ exports.getPresences = async (req, res) => {
 };
 
 // ── Bulletins parent ──────────────────────────────────────────
+// ── Vérifier si le parent a le droit d'accéder à la page bulletin ────────────
+// Le parent peut accéder si une notification de type 'bulletin' existe pour son enfant
+exports.checkBulletinAcces = async (req, res) => {
+  try {
+    const parent_id = req.user.id;
+    const { eleve_id } = req.query;
+
+    if (!eleve_id)
+      return res.status(400).json({ success: false, message: 'eleve_id requis' });
+
+    // Vérifier que l'enfant appartient bien à ce parent
+    const [check] = await db.query(
+      'SELECT id FROM eleves WHERE id = ? AND parent_id = ?',
+      [eleve_id, parent_id]
+    );
+    if (check.length === 0)
+      return res.status(403).json({ success: false, message: 'Accès refusé' });
+
+    // Vérifier s'il existe une notification bulletin pour cet enfant
+    const [notifs] = await db.query(
+      `SELECT id, message, created_at FROM notifications
+       WHERE eleve_id = ? AND type = 'bulletin'
+       ORDER BY created_at DESC LIMIT 1`,
+      [eleve_id]
+    );
+
+    const acces = notifs.length > 0;
+    res.json({
+      success: true,
+      acces,
+      notification: acces ? notifs[0] : null,
+    });
+  } catch (error) {
+    console.error('Erreur checkBulletinAcces:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+};
+
 exports.getBulletins = async (req, res) => {
   try {
     const parent_id = req.user.id;

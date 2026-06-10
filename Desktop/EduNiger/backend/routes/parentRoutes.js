@@ -11,6 +11,7 @@ router.get('/dashboard',              auth, ctrl.getDashboard);
 router.get('/notes',                  auth, ctrl.getNotes);
 router.get('/presences',              auth, ctrl.getPresences);
 router.get('/bulletins',              auth, ctrl.getBulletins);
+router.get('/bulletin-acces',         auth, ctrl.checkBulletinAcces);
 router.get('/bulletin/:eleve_id/:periode', auth, ctrl.downloadBulletin);
 
 // Admin — créer compte parent

@@ -15,8 +15,8 @@ exports.login = async (req, res) => {
     }
 
     const [users] = await db.query(
-      'SELECT * FROM users WHERE email = ?', 
-      [email]
+      'SELECT * FROM users WHERE tenant_id = ?', 
+      [req.tenantId]
     );
 
     if (users.length === 0) {

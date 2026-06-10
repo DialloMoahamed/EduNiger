@@ -30,7 +30,7 @@ import LoginParent from "./pages/parent/LoginParent";
 import ParentDashboard from "./pages/parent/ParentDashboard";
 import ParentNotes from "./pages/parent/ParentNotes";
 import ParentProfil from "./pages/parent/ParentProfil";
-import { ParentAbsences } from "./pages/parent/ParentAbsencesBulletins";
+import { ParentAbsences, ParentBulletins } from "./pages/parent/ParentAbsencesBulletins";
 import ParentEmploiDuTemps from "./pages/parent/ParentEmploiDuTemps";
 
 // ✅ NOUVEAU : page messagerie dédiée à l'espace parent
@@ -87,6 +87,7 @@ function App() {
           <Route path="/parent/dashboard" element={<ParentDashboard />} />
           <Route path="/parent/notes" element={<ParentNotes />} />
           <Route path="/parent/absences" element={<ParentAbsences />} />
+          <Route path="/parent/bulletins" element={<ParentBulletins />} />
           <Route
             path="/parent/emploi-du-temps"
             element={<ParentEmploiDuTemps />}
