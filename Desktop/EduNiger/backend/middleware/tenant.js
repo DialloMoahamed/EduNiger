@@ -8,7 +8,7 @@
 //            → injecte req.tenantId = 3, req.school = { id, name, ... }
 // ============================================================
 
-const db = require('../config/db'); // adapte si ton chemin est différent
+const db = require('../config/database');
 
 module.exports = async (req, res, next) => {
   try {

@@ -1,12 +1,15 @@
 const db = require('../config/database');
 
-// Obtenir le profil de l'école
+// Obtenir le profil de l'école (depuis la table schools SaaS)
 exports.getEcole = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM ecole LIMIT 1');
-    if (rows.length === 0) {
+    const [rows] = await db.query(
+      'SELECT * FROM schools WHERE id = ? LIMIT 1',
+      [req.tenantId]
+    );
+    if (rows.length === 0)
       return res.status(404).json({ success: false, message: 'Profil école non trouvé' });
-    }
+
     res.json({ success: true, ecole: rows[0] });
   } catch (error) {
     console.error('Erreur getEcole:', error);
@@ -14,7 +17,7 @@ exports.getEcole = async (req, res) => {
   }
 };
 
-// Mettre à jour le profil de l'école
+// Mettre à jour le profil de l'école (dans la table schools)
 exports.updateEcole = async (req, res) => {
   try {
     const {
@@ -23,30 +26,33 @@ exports.updateEcole = async (req, res) => {
       devise, annee_scolaire, couleur_primaire
     } = req.body;
 
-    const [existing] = await db.query('SELECT id FROM ecole LIMIT 1');
+    await db.query(
+      `UPDATE schools SET
+        name = ?,
+        config = JSON_SET(
+          COALESCE(config, '{}'),
+          '$.type_ecole',    ?,
+          '$.region',        ?,
+          '$.departement',   ?,
+          '$.inspection',    ?,
+          '$.boite_postale', ?,
+          '$.devise',        ?,
+          '$.annee_scolaire',?
+        ),
+        address       = ?,
+        phone         = ?,
+        email         = ?,
+        primary_color = ?
+       WHERE id = ?`,
+      [
+        nom,
+        type_ecole, region, departement, inspection, boite_postale, devise, annee_scolaire,
+        adresse, telephone, email, couleur_primaire || '#3B82F6',
+        req.tenantId
+      ]
+    );
 
-    if (existing.length === 0) {
-      await db.query(
-        `INSERT INTO ecole (nom, type_ecole, region, departement, inspection,
-          adresse, telephone, email, boite_postale, devise, annee_scolaire, couleur_primaire)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [nom, type_ecole, region, departement, inspection,
-         adresse, telephone, email, boite_postale, devise, annee_scolaire, couleur_primaire]
-      );
-    } else {
-      await db.query(
-        `UPDATE ecole SET
-          nom=?, type_ecole=?, region=?, departement=?, inspection=?,
-          adresse=?, telephone=?, email=?, boite_postale=?,
-          devise=?, annee_scolaire=?, couleur_primaire=?
-         WHERE id=?`,
-        [nom, type_ecole, region, departement, inspection,
-         adresse, telephone, email, boite_postale,
-         devise, annee_scolaire, couleur_primaire, existing[0].id]
-      );
-    }
-
-    const [updated] = await db.query('SELECT * FROM ecole LIMIT 1');
+    const [updated] = await db.query('SELECT * FROM schools WHERE id = ?', [req.tenantId]);
     res.json({ success: true, message: 'Profil école mis à jour', ecole: updated[0] });
   } catch (error) {
     console.error('Erreur updateEcole:', error);
