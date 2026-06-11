@@ -1,48 +1,118 @@
 import { useState, useEffect } from "react";
 
-const API = "http://localhost:3000/api/superadmin";
+// ── API ───────────────────────────────────────────────────────
+const BASE = (import.meta.env.VITE_API_URL || "http://localhost:3000/api").replace(/\/api$/, "");
+const API  = `${BASE}/api/superadmin`;
 
-const getToken = () => localStorage.getItem("sa_token");
-const headers = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${getToken()}`,
-});
+const getToken  = () => localStorage.getItem("sa_token");
+const authHdrs  = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` });
 
-// ── Palette EduNiger ──────────────────────────────────────────
-const C = {
-  green:      "#0A5C36",
-  greenLight: "#E1F5EE",
-  greenMid:   "#1D9E75",
-  gold:       "#F5A623",
-  goldLight:  "#FAEEDA",
-  red:        "#E24B4A",
-  redLight:   "#FCEBEB",
-  gray:       "#F1EFE8",
-  grayText:   "#5F5E5A",
-  border:     "rgba(0,0,0,0.1)",
-};
+// ── Navigation superadmin ─────────────────────────────────────
+const NAV = [
+  { key: "dashboard", icon: "📊", label: "Tableau de bord",  section: "PRINCIPAL" },
+  { key: "schools",   icon: "🏫", label: "Écoles",           section: "GESTION" },
+  { key: "pricing",   icon: "💳", label: "Tarification",     section: "GESTION" },
+];
 
-const badge = (label, color, bg) => (
-  <span style={{
-    background: bg, color, fontSize: 11, fontWeight: 500,
-    padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap"
-  }}>{label}</span>
-);
+// ═══════════════════════════════════════════════════════════════
+//  LAYOUT SUPERADMIN (sidebar + topbar + contenu)
+// ═══════════════════════════════════════════════════════════════
+function SuperAdminLayout({ admin, onLogout, page, setPage, children }) {
+  const today = new Date().toLocaleDateString("fr-FR", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric"
+  });
 
-const statutBadge = (s) => {
-  if (s === "Actif")          return badge("Actif",           C.greenMid,  C.greenLight);
-  if (s === "Expire bientôt") return badge("Expire bientôt",  C.gold,      C.goldLight);
-  if (s === "Expiré")         return badge("Expiré",          C.red,       C.redLight);
-  return badge("Inactif", C.grayText, C.gray);
-};
+  const pageTitles = {
+    dashboard: { title: "Tableau de bord",  subtitle: "Vue globale de la plateforme EduNiger" },
+    schools:   { title: "Gestion des Écoles", subtitle: "Onboarding, abonnements et accès" },
+    pricing:   { title: "Tarification",     subtitle: "Frais d'installation et abonnements annuels" },
+  };
+  const info = pageTitles[page] || pageTitles.dashboard;
 
-// ── Login ─────────────────────────────────────────────────────
-function Login({ onLogin }) {
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [err, setErr]   = useState("");
+  // Grouper la nav par section
+  const sections = {};
+  NAV.forEach(item => {
+    if (!sections[item.section]) sections[item.section] = [];
+    sections[item.section].push(item);
+  });
+
+  return (
+    <div className="app-layout">
+      {/* ── Sidebar ── */}
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <div className="logo-icon">📚</div>
+          <div className="logo-text">
+            <span className="logo-name">EduNiger</span>
+            <span className="logo-tagline">Super Admin</span>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          {Object.entries(sections).map(([section, items]) => (
+            <div key={section}>
+              <div className="nav-section-label">{section}</div>
+              {items.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => setPage(item.key)}
+                  className={`nav-item ${page === item.key ? "active" : ""}`}
+                  style={{ width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", font: "inherit" }}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="user-card">
+            <div className="user-avatar">SA</div>
+            <div className="user-info">
+              <div className="user-name">{admin?.name || "Super Admin"}</div>
+              <div className="user-role">Super Administrateur</div>
+            </div>
+            <button className="logout-btn" onClick={onLogout} title="Déconnexion">⏻</button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Contenu principal ── */}
+      <div className="main-content">
+        {/* Topbar */}
+        <header className="topbar">
+          <div>
+            <div className="topbar-title">{info.title}</div>
+            <div className="topbar-subtitle">{info.subtitle}</div>
+          </div>
+          <div className="topbar-right">
+            <span className="topbar-school-name" style={{ fontSize: 12 }}>📅 {today}</span>
+            <span style={{
+              background: "#FFF3CD", color: "#856404", fontSize: 11, fontWeight: 600,
+              padding: "4px 10px", borderRadius: 20, border: "1px solid #FFEAA7"
+            }}>🔐 Super Admin</span>
+          </div>
+        </header>
+
+        <div className="page-content">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PAGE LOGIN
+// ═══════════════════════════════════════════════════════════════
+function LoginPage({ onLogin }) {
+  const [form, setForm]       = useState({ email: "", password: "" });
+  const [err, setErr]         = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
 
   const submit = async () => {
+    if (!form.email || !form.password) return setErr("Email et mot de passe requis");
     setLoading(true); setErr("");
     try {
       const r = await fetch(`${API}/login`, {
@@ -58,356 +128,645 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.gray }}>
-      <div style={{ width: 360, background: "#fff", borderRadius: 16, border: `0.5px solid ${C.border}`, padding: "40px 36px" }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>📚</div>
-          <div style={{ fontSize: 20, fontWeight: 500, color: C.green }}>EduNiger</div>
-          <div style={{ fontSize: 13, color: C.grayText, marginTop: 4 }}>Super Administration</div>
+    <div className="login-page">
+      <div className="login-left">
+        <div className="login-branding">
+          <div className="login-logo">📚</div>
+          <div className="login-brand-name">EduNiger</div>
+          <div className="login-brand-desc">
+            Plateforme SaaS de gestion scolaire pour les établissements du Niger et de l'Afrique de l'Ouest.
+          </div>
         </div>
-        {err && <div style={{ background: C.redLight, color: C.red, padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{err}</div>}
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, color: C.grayText, display: "block", marginBottom: 6 }}>Email</label>
-          <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-            placeholder="admin@eduniger.ne" style={{ width: "100%", boxSizing: "border-box" }} />
+        <div className="login-features">
+          {[
+            { icon: "🏫", text: "Gestion multi-école centralisée" },
+            { icon: "💳", text: "Suivi des abonnements et paiements" },
+            { icon: "🔑", text: "Activation et suspension des accès" },
+            { icon: "📊", text: "Tableau de bord global en temps réel" },
+          ].map((f, i) => (
+            <div className="login-feature" key={i}>
+              <div className="login-feature-icon">{f.icon}</div>
+              <div className="login-feature-text">{f.text}</div>
+            </div>
+          ))}
         </div>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ fontSize: 12, color: C.grayText, display: "block", marginBottom: 6 }}>Mot de passe</label>
-          <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
-            onKeyDown={e => e.key === "Enter" && submit()} style={{ width: "100%", boxSizing: "border-box" }} />
-        </div>
-        <button onClick={submit} disabled={loading}
-          style={{ width: "100%", background: C.green, color: "#fff", border: "none", borderRadius: 8, padding: "12px", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-          {loading ? "Connexion..." : "Se connecter"}
-        </button>
       </div>
-    </div>
-  );
-}
 
-// ── Stats cards ───────────────────────────────────────────────
-function StatCard({ label, value, color }) {
-  return (
-    <div style={{ background: "#fff", border: `0.5px solid ${C.border}`, borderRadius: 12, padding: "16px 20px" }}>
-      <div style={{ fontSize: 12, color: C.grayText, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 500, color: color || "var(--color-text-primary)" }}>{value}</div>
-    </div>
-  );
-}
-
-// ── Modal onboarding nouvelle école ──────────────────────────
-function OnboardModal({ pricing, onClose, onSuccess }) {
-  const [form, setForm] = useState({
-    name: "", slug: "", email: "", phone: "", city: "",
-    payment_method: "nita", install_ref: "", annual_ref: "",
-  });
-  const [err, setErr]     = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  const submit = async () => {
-    if (!form.name || !form.slug || !form.install_ref || !form.annual_ref)
-      return setErr("Remplissez tous les champs obligatoires");
-    setLoading(true); setErr("");
-    try {
-      const r = await fetch(`${API}/schools/onboard`, {
-        method: "POST", headers: headers(), body: JSON.stringify(form),
-      });
-      const d = await r.json();
-      if (d.success) { onSuccess(); onClose(); }
-      else setErr(d.message || "Erreur lors de l'enregistrement");
-    } catch { setErr("Erreur serveur"); }
-    setLoading(false);
-  };
-
-  const inp = (label, key, placeholder, type = "text") => (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ fontSize: 12, color: C.grayText, display: "block", marginBottom: 5 }}>{label}</label>
-      <input type={type} value={form[key]} onChange={e => f(key, e.target.value)}
-        placeholder={placeholder} style={{ width: "100%", boxSizing: "border-box" }} />
-    </div>
-  );
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-      <div style={{ background: "#fff", borderRadius: 16, width: 520, maxHeight: "90vh", overflowY: "auto", padding: "32px 36px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <div style={{ fontSize: 17, fontWeight: 500 }}>Enregistrer une nouvelle école</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.grayText }}>×</button>
-        </div>
-
-        {err && <div style={{ background: C.redLight, color: C.red, padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{err}</div>}
-
-        <div style={{ fontSize: 13, fontWeight: 500, color: C.grayText, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>Infos école</div>
-        {inp("Nom de l'école *", "name", "Lycée Bosso")}
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, color: C.grayText, display: "block", marginBottom: 5 }}>Identifiant URL (slug) *</label>
-          <input value={form.slug} onChange={e => f("slug", e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""))}
-            placeholder="lycee-bosso" style={{ width: "100%", boxSizing: "border-box" }} />
-          {form.slug && <div style={{ fontSize: 11, color: C.grayText, marginTop: 4 }}>{form.slug}.eduniger.com</div>}
-        </div>
-        {inp("Email", "email", "contact@lycee-bosso.ne", "email")}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {inp("Téléphone", "phone", "+227 90 00 00 00")}
-          {inp("Ville", "city", "Niamey")}
-        </div>
-
-        <div style={{ fontSize: 13, fontWeight: 500, color: C.grayText, margin: "20px 0 12px", textTransform: "uppercase", letterSpacing: 1 }}>Paiement reçu</div>
-
-        <div style={{ background: C.greenLight, borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: C.grayText }}>Frais d'installation</span>
-            <span style={{ fontWeight: 500, color: C.green }}>{pricing?.installation_fee?.toLocaleString()} FCFA</span>
+      <div className="login-right">
+        <div className="login-form-wrap">
+          <div style={{ marginBottom: 20 }}>
+            <span style={{
+              background: "#FFF3CD", color: "#856404", fontSize: 12, fontWeight: 600,
+              padding: "4px 12px", borderRadius: 20, border: "1px solid #FFEAA7"
+            }}>🔐 Super Administration</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-            <span style={{ color: C.grayText }}>Abonnement annuel</span>
-            <span style={{ fontWeight: 500, color: C.green }}>{pricing?.annual_fee?.toLocaleString()} FCFA</span>
+          <h1 className="login-form-title">Connexion</h1>
+          <p className="login-form-sub">Accès réservé aux administrateurs EduNiger</p>
+
+          {err && <div className="alert alert-danger">⚠️ {err}</div>}
+
+          <div className="form-group">
+            <label className="form-label">Adresse email</label>
+            <input type="email" className="form-input" value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
+              placeholder="admin@eduniger.ne" autoFocus />
           </div>
-        </div>
 
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, color: C.grayText, display: "block", marginBottom: 5 }}>Moyen de paiement</label>
-          <select value={form.payment_method} onChange={e => f("payment_method", e.target.value)} style={{ width: "100%" }}>
-            <option value="nita">NITA</option>
-            <option value="amana">Amana</option>
-            <option value="virement">Virement bancaire</option>
-            <option value="especes">Espèces</option>
-          </select>
-        </div>
-        {inp("Référence paiement installation *", "install_ref", "NITA-2025-001234")}
-        {inp("Référence paiement abonnement *", "annual_ref", "NITA-2025-001235")}
+          <div className="form-group">
+            <label className="form-label">Mot de passe</label>
+            <div style={{ position: "relative" }}>
+              <input type={showPwd ? "text" : "password"} className="form-input"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                onKeyDown={e => e.key === "Enter" && submit()}
+                placeholder="••••••••" style={{ paddingRight: 40 }} />
+              <button onClick={() => setShowPwd(v => !v)}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--text-muted)" }}
+                tabIndex={-1}>{showPwd ? "🙈" : "👁️"}</button>
+            </div>
+          </div>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 8 }}>Annuler</button>
-          <button onClick={submit} disabled={loading}
-            style={{ flex: 2, padding: 12, borderRadius: 8, background: C.green, color: "#fff", border: "none", fontWeight: 500, cursor: "pointer" }}>
-            {loading ? "Enregistrement..." : "✓ Activer l'école"}
+          <button className="btn btn-primary w-full btn-lg mt-2" onClick={submit} disabled={loading}
+            style={{ justifyContent: "center" }}>
+            {loading ? "⏳ Connexion..." : "→ Se connecter"}
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-// ── Modal renouvellement ──────────────────────────────────────
-function RenewalModal({ school, pricing, onClose, onSuccess }) {
-  const [form, setForm] = useState({ payment_method: "nita", payment_ref: "" });
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-
-  const submit = async () => {
-    if (!form.payment_ref) return setErr("Référence de paiement requise");
-    setLoading(true);
-    try {
-      const r = await fetch(`${API}/schools/${school.id}/renew`, {
-        method: "POST", headers: headers(), body: JSON.stringify(form),
-      });
-      const d = await r.json();
-      if (d.success) { onSuccess(); onClose(); }
-      else setErr(d.message);
-    } catch { setErr("Erreur serveur"); }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-      <div style={{ background: "#fff", borderRadius: 16, width: 420, padding: "32px 36px" }}>
-        <div style={{ fontSize: 17, fontWeight: 500, marginBottom: 8 }}>Renouveler l'abonnement</div>
-        <div style={{ fontSize: 13, color: C.grayText, marginBottom: 24 }}>{school.name}</div>
-        {err && <div style={{ background: C.redLight, color: C.red, padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{err}</div>}
-        <div style={{ background: C.greenLight, borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 13 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: C.grayText }}>Montant renouvellement</span>
-            <span style={{ fontWeight: 500, color: C.green }}>{pricing?.annual_fee?.toLocaleString()} FCFA</span>
+          <div style={{ marginTop: 32, textAlign: "center", fontSize: 12, color: "var(--text-light)" }}>
+            EduNiger SaaS — Tous droits réservés © 2026
           </div>
         </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, color: C.grayText, display: "block", marginBottom: 5 }}>Moyen de paiement</label>
-          <select value={form.payment_method} onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))} style={{ width: "100%" }}>
-            <option value="nita">NITA</option>
-            <option value="amana">Amana</option>
-            <option value="virement">Virement bancaire</option>
-            <option value="especes">Espèces</option>
-          </select>
-        </div>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ fontSize: 12, color: C.grayText, display: "block", marginBottom: 5 }}>Référence paiement *</label>
-          <input value={form.payment_ref} onChange={e => setForm(p => ({ ...p, payment_ref: e.target.value }))}
-            placeholder="NITA-2025-00567" style={{ width: "100%", boxSizing: "border-box" }} />
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 8 }}>Annuler</button>
-          <button onClick={submit} disabled={loading}
-            style={{ flex: 2, padding: 12, borderRadius: 8, background: C.green, color: "#fff", border: "none", fontWeight: 500, cursor: "pointer" }}>
-            {loading ? "Enregistrement..." : "✓ Confirmer le renouvellement"}
-          </button>
-        </div>
       </div>
     </div>
   );
 }
 
-// ── Page principale ───────────────────────────────────────────
-function Dashboard({ admin, onLogout }) {
-  const [schools, setSchools]   = useState([]);
-  const [stats, setStats]       = useState(null);
-  const [pricing, setPricing]   = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [showOnboard, setShowOnboard] = useState(false);
-  const [renewal, setRenewal]   = useState(null);
-  const [search, setSearch]     = useState("");
-  const [filter, setFilter]     = useState("all");
+// ═══════════════════════════════════════════════════════════════
+//  PAGE DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+function DashboardPage() {
+  const [stats, setStats]     = useState(null);
+  const [schools, setSchools] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { load(); }, []);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [sR, stR, pR] = await Promise.all([
-        fetch(`${API}/schools`, { headers: headers() }),
-        fetch(`${API}/stats`,   { headers: headers() }),
-        fetch(`${API}/pricing`, { headers: headers() }),
+      const [sR, stR] = await Promise.all([
+        fetch(`${API}/schools`, { headers: authHdrs() }),
+        fetch(`${API}/stats`,   { headers: authHdrs() }),
       ]);
-      const [sD, stD, pD] = await Promise.all([sR.json(), stR.json(), pR.json()]);
+      const [sD, stD] = await Promise.all([sR.json(), stR.json()]);
       if (sD.success)  setSchools(sD.schools);
       if (stD.success) setStats(stD.stats);
-      if (pD.success)  setPricing(pD.pricing);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  if (loading) return (
+    <div className="loading-state">
+      <div className="spinner"></div>
+      <span>Chargement du tableau de bord...</span>
+    </div>
+  );
 
-  const toggle = async (id, active) => {
-    await fetch(`${API}/schools/${id}/toggle`, { method: "POST", headers: headers(), body: JSON.stringify({ is_active: active ? 0 : 1 }) });
-    load();
-  };
-
-  const filtered = schools.filter(s => {
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.slug.toLowerCase().includes(search.toLowerCase());
-    if (filter === "all")     return matchSearch;
-    if (filter === "active")  return matchSearch && s.is_active;
-    if (filter === "expiring")return matchSearch && s.statut_abonnement === "Expire bientôt";
-    if (filter === "expired") return matchSearch && s.statut_abonnement === "Expiré";
-    return matchSearch;
-  });
+  // 5 dernières écoles
+  const recent = [...schools].sort((a, b) => b.id - a.id).slice(0, 5);
 
   return (
-    <div style={{ minHeight: "100vh", background: C.gray }}>
-      {/* Header */}
-      <div style={{ background: C.green, padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 22 }}>📚</span>
-          <span style={{ color: "#fff", fontWeight: 500, fontSize: 15 }}>EduNiger</span>
-          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>/ Super Admin</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>{admin?.name}</span>
-          <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 13, cursor: "pointer" }}>
-            Déconnexion
-          </button>
+    <div>
+      {/* Bannière bienvenue */}
+      <div className="card mb-3" style={{ background: "linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%)", border: "none", marginBottom: 24 }}>
+        <div className="card-body" style={{ padding: "24px 28px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Bienvenue</div>
+              <div style={{ color: "#fff", fontSize: 20, fontWeight: 800 }}>Super Administrateur</div>
+              <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, marginTop: 4 }}>Accès complet à la plateforme EduNiger</div>
+            </div>
+            <div style={{ fontSize: 52, opacity: 0.2 }}>🏫</div>
+          </div>
         </div>
       </div>
 
-      <div style={{ padding: "32px" }}>
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>
-          <StatCard label="Total écoles"         value={stats?.total ?? "—"} />
-          <StatCard label="Écoles actives"        value={stats?.actives ?? "—"} color={C.greenMid} />
-          <StatCard label="Expirent dans 30j"    value={stats?.expirent_bientot ?? "—"} color={C.gold} />
-          <StatCard label="Abonnements expirés"  value={stats?.expires ?? "—"} color={C.red} />
-        </div>
+      {/* Stats cards */}
+      <div className="stats-grid">
+        {[
+          { icon: "🏫", value: stats?.total ?? "—",            label: "Total écoles",         color: "green" },
+          { icon: "✅", value: stats?.actives ?? "—",           label: "Écoles actives",       color: "blue" },
+          { icon: "⚠️",  value: stats?.expirent_bientot ?? "—", label: "Expirent dans 30j",   color: "amber" },
+          { icon: "❌", value: stats?.expires ?? "—",           label: "Abonnements expirés", color: "red" },
+        ].map((s, i) => (
+          <div className="stat-card" key={i}>
+            <div className={`stat-card-icon ${s.color}`}>{s.icon}</div>
+            <div className={`stat-card-accent ${s.color}`}></div>
+            <div className="stat-value">{s.value}</div>
+            <div className="stat-label">{s.label}</div>
+          </div>
+        ))}
+      </div>
 
-        {/* Toolbar */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "center" }}>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher une école..." style={{ flex: 1, maxWidth: 300 }} />
-          <select value={filter} onChange={e => setFilter(e.target.value)}>
-            <option value="all">Toutes les écoles</option>
-            <option value="active">Actives uniquement</option>
-            <option value="expiring">Expirent bientôt</option>
-            <option value="expired">Expirées</option>
-          </select>
-          <button onClick={() => setShowOnboard(true)}
-            style={{ background: C.green, color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>
-            + Nouvelle école
-          </button>
+      {/* Dernières écoles enregistrées */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <div className="card-title">Dernières écoles enregistrées</div>
+            <div className="card-subtitle">{schools.length} école(s) au total</div>
+          </div>
         </div>
-
-        {/* Table */}
-        <div style={{ background: "#fff", borderRadius: 12, border: `0.5px solid ${C.border}`, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <div className="table-wrapper">
+          <table className="table">
             <thead>
-              <tr style={{ background: C.gray }}>
-                {["École", "Slug", "Ville", "Statut", "Jours restants", "Fin abonnement", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontWeight: 500, color: C.grayText, fontSize: 12 }}>{h}</th>
-                ))}
+              <tr>
+                <th>École</th>
+                <th>Slug</th>
+                <th>Ville</th>
+                <th>Statut</th>
+                <th>Fin abonnement</th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: C.grayText }}>Chargement...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: C.grayText }}>Aucune école trouvée</td></tr>
-              ) : filtered.map((s, i) => (
-                <tr key={s.id} style={{ borderTop: `0.5px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "rgba(0,0,0,0.01)" }}>
-                  <td style={{ padding: "12px 16px", fontWeight: 500 }}>
-                    <div>{s.name}</div>
-                    {!s.is_active && <span style={{ fontSize: 11, color: C.red }}>Suspendu</span>}
-                  </td>
-                  <td style={{ padding: "12px 16px", color: C.grayText, fontFamily: "monospace" }}>{s.slug}</td>
-                  <td style={{ padding: "12px 16px", color: C.grayText }}>{s.city || "—"}</td>
-                  <td style={{ padding: "12px 16px" }}>{statutBadge(s.statut_abonnement)}</td>
-                  <td style={{ padding: "12px 16px", color: s.jours_restants <= 30 ? C.red : C.grayText, fontWeight: s.jours_restants <= 30 ? 500 : 400 }}>
-                    {s.jours_restants != null ? `${s.jours_restants}j` : "—"}
-                  </td>
-                  <td style={{ padding: "12px 16px", color: C.grayText }}>
+              {recent.length === 0 ? (
+                <tr><td colSpan={5}><div className="empty-state"><div>Aucune école enregistrée</div></div></td></tr>
+              ) : recent.map(s => (
+                <tr key={s.id}>
+                  <td><strong>{s.name}</strong></td>
+                  <td style={{ fontFamily: "monospace", color: "var(--text-muted)" }}>{s.slug}</td>
+                  <td style={{ color: "var(--text-muted)" }}>{s.city || "—"}</td>
+                  <td><StatusBadge status={s.statut_abonnement} /></td>
+                  <td style={{ color: "var(--text-muted)" }}>
                     {s.period_end ? new Date(s.period_end).toLocaleDateString("fr-FR") : "—"}
-                  </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => setRenewal(s)} style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, background: C.greenLight, color: C.green, border: "none", cursor: "pointer" }}>
-                        Renouveler
-                      </button>
-                      <button onClick={() => toggle(s.id, s.is_active)}
-                        style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, background: s.is_active ? C.redLight : C.greenLight, color: s.is_active ? C.red : C.greenMid, border: "none", cursor: "pointer" }}>
-                        {s.is_active ? "Suspendre" : "Activer"}
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-
-        {/* Tarification en vigueur */}
-        {pricing && (
-          <div style={{ marginTop: 24, background: "#fff", borderRadius: 12, border: `0.5px solid ${C.border}`, padding: "20px 24px" }}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>Tarification en vigueur</div>
-            <div style={{ display: "flex", gap: 24, fontSize: 13 }}>
-              <div><span style={{ color: C.grayText }}>Installation : </span><strong>{pricing.installation_fee?.toLocaleString()} FCFA</strong></div>
-              <div><span style={{ color: C.grayText }}>Abonnement annuel : </span><strong>{pricing.annual_fee?.toLocaleString()} FCFA</strong></div>
-              <div style={{ color: C.grayText, fontSize: 12 }}>{pricing.note}</div>
-            </div>
-          </div>
-        )}
       </div>
-
-      {showOnboard && <OnboardModal pricing={pricing} onClose={() => setShowOnboard(false)} onSuccess={load} />}
-      {renewal && <RenewalModal school={renewal} pricing={pricing} onClose={() => setRenewal(null)} onSuccess={load} />}
     </div>
   );
 }
 
-// ── Root ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  PAGE ÉCOLES
+// ═══════════════════════════════════════════════════════════════
+function SchoolsPage() {
+  const [schools, setSchools]         = useState([]);
+  const [pricing, setPricing]         = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState("");
+  const [filter, setFilter]           = useState("all");
+  const [showOnboard, setShowOnboard] = useState(false);
+  const [renewal, setRenewal]         = useState(null);
+  const [detail, setDetail]           = useState(null);
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [sR, pR] = await Promise.all([
+        fetch(`${API}/schools`, { headers: authHdrs() }),
+        fetch(`${API}/pricing`, { headers: authHdrs() }),
+      ]);
+      const [sD, pD] = await Promise.all([sR.json(), pR.json()]);
+      if (sD.success) setSchools(sD.schools);
+      if (pD.success) setPricing(pD.pricing);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  const toggle = async (id, isActive) => {
+    await fetch(`${API}/schools/${id}/toggle`, {
+      method: "POST", headers: authHdrs(),
+      body: JSON.stringify({ is_active: isActive ? 0 : 1 }),
+    });
+    load();
+  };
+
+  const filtered = schools.filter(s => {
+    const q = search.toLowerCase();
+    const matchSearch = s.name.toLowerCase().includes(q) || s.slug.toLowerCase().includes(q);
+    if (filter === "active")   return matchSearch && s.is_active;
+    if (filter === "expiring") return matchSearch && s.statut_abonnement === "Expire bientôt";
+    if (filter === "expired")  return matchSearch && s.statut_abonnement === "Expiré";
+    return matchSearch;
+  });
+
+  return (
+    <div>
+      {/* Toolbar */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-body" style={{ padding: "16px 20px" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <input className="form-input" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="🔍 Rechercher une école..." style={{ flex: 1, minWidth: 200, marginBottom: 0 }} />
+            <select className="form-input" value={filter} onChange={e => setFilter(e.target.value)}
+              style={{ width: "auto", marginBottom: 0 }}>
+              <option value="all">Toutes les écoles</option>
+              <option value="active">Actives uniquement</option>
+              <option value="expiring">Expirent bientôt</option>
+              <option value="expired">Expirées</option>
+            </select>
+            <button className="btn btn-primary" onClick={() => setShowOnboard(true)}>
+              + Nouvelle école
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <div className="card-title">Liste des écoles</div>
+            <div className="card-subtitle">{filtered.length} résultat(s)</div>
+          </div>
+        </div>
+        <div className="table-wrapper">
+          {loading ? (
+            <div className="loading-state"><div className="spinner"></div><span>Chargement...</span></div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>École</th>
+                  <th>Slug</th>
+                  <th>Ville</th>
+                  <th>Statut</th>
+                  <th>Jours restants</th>
+                  <th>Fin abonnement</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={7}>
+                    <div className="empty-state">
+                      <div className="empty-state-icon">🏫</div>
+                      <h3>Aucune école trouvée</h3>
+                    </div>
+                  </td></tr>
+                ) : filtered.map(s => (
+                  <tr key={s.id}>
+                    <td>
+                      <strong>{s.name}</strong>
+                      {!s.is_active && <div style={{ fontSize: 11, color: "var(--danger)" }}>Suspendu</div>}
+                    </td>
+                    <td style={{ fontFamily: "monospace", color: "var(--text-muted)" }}>{s.slug}</td>
+                    <td style={{ color: "var(--text-muted)" }}>{s.city || "—"}</td>
+                    <td><StatusBadge status={s.statut_abonnement} /></td>
+                    <td style={{ fontWeight: s.jours_restants <= 30 ? 600 : 400, color: s.jours_restants <= 30 ? "var(--danger)" : "var(--text-muted)" }}>
+                      {s.jours_restants != null ? `${s.jours_restants}j` : "—"}
+                    </td>
+                    <td style={{ color: "var(--text-muted)" }}>
+                      {s.period_end ? new Date(s.period_end).toLocaleDateString("fr-FR") : "—"}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn btn-secondary" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => setDetail(s)}>Détail</button>
+                        <button className="btn btn-secondary" style={{ fontSize: 12, padding: "4px 10px", color: "var(--primary)", borderColor: "var(--primary)" }} onClick={() => setRenewal(s)}>Renouveler</button>
+                        <button className="btn btn-secondary" style={{ fontSize: 12, padding: "4px 10px", color: s.is_active ? "var(--danger)" : "var(--success)", borderColor: s.is_active ? "var(--danger)" : "var(--success)" }} onClick={() => toggle(s.id, s.is_active)}>
+                          {s.is_active ? "Suspendre" : "Activer"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {showOnboard && <OnboardModal pricing={pricing} onClose={() => setShowOnboard(false)} onSuccess={load} />}
+      {renewal     && <RenewalModal school={renewal} pricing={pricing} onClose={() => setRenewal(null)} onSuccess={load} />}
+      {detail      && <DetailModal school={detail} onClose={() => setDetail(null)} />}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PAGE TARIFICATION
+// ═══════════════════════════════════════════════════════════════
+function PricingPage() {
+  const [pricing, setPricing]   = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [form, setForm]         = useState({ installation_fee: "", annual_fee: "", note: "" });
+  const [success, setSuccess]   = useState("");
+  const [err, setErr]           = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${API}/pricing`, { headers: authHdrs() });
+      const d = await r.json();
+      if (d.success) {
+        setPricing(d.pricing);
+        setForm({ installation_fee: d.pricing.installation_fee, annual_fee: d.pricing.annual_fee, note: d.pricing.note || "" });
+      }
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  const save = async () => {
+    setErr(""); setSuccess(""); setSaving(true);
+    try {
+      const r = await fetch(`${API}/pricing`, { method: "PUT", headers: authHdrs(), body: JSON.stringify(form) });
+      const d = await r.json();
+      if (d.success) { setSuccess("Tarification mise à jour avec succès !"); load(); }
+      else setErr(d.message || "Erreur");
+    } catch { setErr("Impossible de contacter le serveur"); }
+    setSaving(false);
+  };
+
+  if (loading) return <div className="loading-state"><div className="spinner"></div><span>Chargement...</span></div>;
+
+  return (
+    <div style={{ maxWidth: 600 }}>
+      {/* Tarif actuel */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Tarif en vigueur</div>
+            <div className="card-subtitle">Tarification actuelle appliquée aux nouvelles écoles</div>
+          </div>
+          <span className="badge badge-success">✓ Actif</span>
+        </div>
+        <div className="card-body">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {[
+              { label: "Frais d'installation", value: `${Number(pricing?.installation_fee).toLocaleString()} FCFA`, icon: "🔧" },
+              { label: "Abonnement annuel",    value: `${Number(pricing?.annual_fee).toLocaleString()} FCFA`,      icon: "📅" },
+            ].map(item => (
+              <div key={item.label} style={{ background: "var(--bg)", borderRadius: 12, padding: "16px 20px" }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>{item.icon}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{item.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--primary)" }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+          {pricing?.note && (
+            <div style={{ marginTop: 16, padding: "10px 14px", background: "var(--bg)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)" }}>
+              📝 {pricing.note}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Formulaire modification */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <div className="card-title">Modifier la tarification</div>
+            <div className="card-subtitle">Un nouvel enregistrement sera créé (historique conservé)</div>
+          </div>
+        </div>
+        <div className="card-body">
+          {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>✅ {success}</div>}
+          {err     && <div className="alert alert-danger"  style={{ marginBottom: 16 }}>⚠️ {err}</div>}
+
+          <div className="form-group">
+            <label className="form-label">Frais d'installation (FCFA) *</label>
+            <input type="number" className="form-input" value={form.installation_fee}
+              onChange={e => setForm(p => ({ ...p, installation_fee: Number(e.target.value) }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Abonnement annuel (FCFA) *</label>
+            <input type="number" className="form-input" value={form.annual_fee}
+              onChange={e => setForm(p => ({ ...p, annual_fee: Number(e.target.value) }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Note (facultatif)</label>
+            <input type="text" className="form-input" value={form.note}
+              onChange={e => setForm(p => ({ ...p, note: e.target.value }))}
+              placeholder="ex: Tarif lancement 2026" />
+          </div>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>
+            {saving ? "⏳ Enregistrement..." : "✓ Enregistrer le nouveau tarif"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COMPOSANTS PARTAGÉS
+// ═══════════════════════════════════════════════════════════════
+function StatusBadge({ status }) {
+  const map = {
+    "Actif":          { cls: "badge-success", label: "Actif" },
+    "Expire bientôt": { cls: "badge-warning", label: "Expire bientôt" },
+    "Expiré":         { cls: "badge-danger",  label: "Expiré" },
+  };
+  const s = map[status] || { cls: "badge-neutral", label: status || "Inactif" };
+  return <span className={`badge ${s.cls}`}>{s.label}</span>;
+}
+
+function ModalWrap({ children, onClose }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="card" style={{ width: 460, maxHeight: "90vh", overflowY: "auto", margin: 0 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function OnboardModal({ pricing, onClose, onSuccess }) {
+  const [form, setForm] = useState({ name: "", slug: "", email: "", phone: "", city: "", payment_method: "nita", install_ref: "", annual_ref: "" });
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]         = useState("");
+
+  const field = (label, key, type = "text", placeholder = "") => (
+    <div className="form-group" key={key}>
+      <label className="form-label">{label}</label>
+      <input type={type} className="form-input" value={form[key]} placeholder={placeholder}
+        onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} />
+    </div>
+  );
+
+  const submit = async () => {
+    if (!form.name || !form.slug || !form.install_ref || !form.annual_ref)
+      return setErr("Nom, slug et références de paiement sont obligatoires");
+    setLoading(true); setErr("");
+    try {
+      const r = await fetch(`${API}/schools/onboard`, { method: "POST", headers: authHdrs(), body: JSON.stringify(form) });
+      const d = await r.json();
+      if (d.success) { onSuccess(); onClose(); }
+      else setErr(d.message || "Erreur");
+    } catch { setErr("Impossible de contacter le serveur"); }
+    setLoading(false);
+  };
+
+  return (
+    <ModalWrap onClose={onClose}>
+      <div className="card-header">
+        <div>
+          <div className="card-title">Nouvelle école</div>
+          <div className="card-subtitle">Onboarding et activation immédiate</div>
+        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-muted)" }}>×</button>
+      </div>
+      <div className="card-body">
+        {err && <div className="alert alert-danger" style={{ marginBottom: 16 }}>⚠️ {err}</div>}
+        {pricing && (
+          <div className="alert alert-success" style={{ marginBottom: 16, fontSize: 13 }}>
+            💳 Installation : <strong>{Number(pricing.installation_fee).toLocaleString()} FCFA</strong> + Annuel : <strong>{Number(pricing.annual_fee).toLocaleString()} FCFA</strong>
+          </div>
+        )}
+        {field("Nom de l'école *",        "name",           "text", "Lycée National Bosso")}
+        {field("Slug (identifiant URL) *", "slug",           "text", "lycee-bosso")}
+        {field("Email",                    "email",          "email","contact@ecole.ne")}
+        {field("Téléphone",                "phone",          "tel",  "+227 90 00 00 00")}
+        {field("Ville",                    "city",           "text", "Niamey")}
+        <div className="form-group">
+          <label className="form-label">Moyen de paiement</label>
+          <select className="form-input" value={form.payment_method} onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))}>
+            <option value="nita">NITA</option>
+            <option value="amana">Amana</option>
+            <option value="virement">Virement bancaire</option>
+            <option value="especes">Espèces</option>
+          </select>
+        </div>
+        {field("Réf. paiement installation *", "install_ref", "text", "NITA-2026-00001")}
+        {field("Réf. paiement annuel *",        "annual_ref",  "text", "NITA-2026-00002")}
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <button className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>Annuler</button>
+          <button className="btn btn-primary" onClick={submit} disabled={loading} style={{ flex: 2 }}>
+            {loading ? "⏳ Création..." : "✓ Créer et activer l'école"}
+          </button>
+        </div>
+      </div>
+    </ModalWrap>
+  );
+}
+
+function RenewalModal({ school, pricing, onClose, onSuccess }) {
+  const [form, setForm]       = useState({ payment_method: "nita", payment_ref: "" });
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]         = useState("");
+
+  const submit = async () => {
+    if (!form.payment_ref) return setErr("Référence de paiement requise");
+    setLoading(true); setErr("");
+    try {
+      const r = await fetch(`${API}/schools/${school.id}/renew`, { method: "POST", headers: authHdrs(), body: JSON.stringify(form) });
+      const d = await r.json();
+      if (d.success) { onSuccess(); onClose(); }
+      else setErr(d.message || "Erreur");
+    } catch { setErr("Impossible de contacter le serveur"); }
+    setLoading(false);
+  };
+
+  return (
+    <ModalWrap onClose={onClose}>
+      <div className="card-header">
+        <div>
+          <div className="card-title">Renouveler l'abonnement</div>
+          <div className="card-subtitle">{school.name}</div>
+        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-muted)" }}>×</button>
+      </div>
+      <div className="card-body">
+        {err && <div className="alert alert-danger" style={{ marginBottom: 16 }}>⚠️ {err}</div>}
+        {pricing && (
+          <div style={{ background: "var(--bg)", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 13, display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--text-muted)" }}>Montant renouvellement</span>
+            <strong style={{ color: "var(--primary)" }}>{Number(pricing.annual_fee).toLocaleString()} FCFA</strong>
+          </div>
+        )}
+        <div className="form-group">
+          <label className="form-label">Moyen de paiement</label>
+          <select className="form-input" value={form.payment_method} onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))}>
+            <option value="nita">NITA</option>
+            <option value="amana">Amana</option>
+            <option value="virement">Virement bancaire</option>
+            <option value="especes">Espèces</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Référence paiement *</label>
+          <input type="text" className="form-input" value={form.payment_ref}
+            onChange={e => setForm(p => ({ ...p, payment_ref: e.target.value }))}
+            placeholder="NITA-2026-00567" />
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <button className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>Annuler</button>
+          <button className="btn btn-primary" onClick={submit} disabled={loading} style={{ flex: 2 }}>
+            {loading ? "⏳ Enregistrement..." : "✓ Confirmer le renouvellement"}
+          </button>
+        </div>
+      </div>
+    </ModalWrap>
+  );
+}
+
+function DetailModal({ school, onClose }) {
+  return (
+    <ModalWrap onClose={onClose}>
+      <div className="card-header">
+        <div>
+          <div className="card-title">{school.name}</div>
+          <div className="card-subtitle">Détails de l'école</div>
+        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-muted)" }}>×</button>
+      </div>
+      <div className="card-body">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 24px" }}>
+          {[
+            ["Slug",              school.slug],
+            ["Ville",             school.city || "—"],
+            ["Email",             school.email || "—"],
+            ["Téléphone",         school.phone || "—"],
+            ["Début abonnement",  school.period_start ? new Date(school.period_start).toLocaleDateString("fr-FR") : "—"],
+            ["Fin abonnement",    school.period_end   ? new Date(school.period_end).toLocaleDateString("fr-FR")   : "—"],
+            ["Jours restants",    school.jours_restants != null ? `${school.jours_restants} jours` : "—"],
+            ["Statut",            <StatusBadge key="s" status={school.statut_abonnement} />],
+          ].map(([label, val]) => (
+            <div key={label}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
+              <div style={{ fontWeight: 500 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 20, padding: "10px 14px", background: "var(--bg)", borderRadius: 8, fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>
+          🌐 {school.slug}.eduniger.com
+        </div>
+      </div>
+    </ModalWrap>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORT PRINCIPAL
+// ═══════════════════════════════════════════════════════════════
 export default function SuperAdmin() {
   const [admin, setAdmin] = useState(() => {
-    const t = localStorage.getItem("sa_token");
-    return t ? { name: "Admin" } : null;
+    const token = localStorage.getItem("sa_token");
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return { name: payload.email || "Admin", email: payload.email };
+    } catch { return { name: "Admin" }; }
   });
+  const [page, setPage] = useState("dashboard");
 
   const logout = () => { localStorage.removeItem("sa_token"); setAdmin(null); };
 
-  if (!admin) return <Login onLogin={setAdmin} />;
-  return <Dashboard admin={admin} onLogout={logout} />;
+  if (!admin) return <LoginPage onLogin={setAdmin} />;
+
+  return (
+    <SuperAdminLayout admin={admin} onLogout={logout} page={page} setPage={setPage}>
+      {page === "dashboard" && <DashboardPage />}
+      {page === "schools"   && <SchoolsPage />}
+      {page === "pricing"   && <PricingPage />}
+    </SuperAdminLayout>
+  );
 }

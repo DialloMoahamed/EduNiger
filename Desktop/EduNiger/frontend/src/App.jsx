@@ -37,6 +37,9 @@ import ParentEmploiDuTemps from "./pages/parent/ParentEmploiDuTemps";
 import ParentMessages from "./pages/parent/ParentMessages";
 import Notifications from "./pages/Notifications";
 
+// ── Espace Super Admin ──────────────────────────────────────────────────────
+import SuperAdmin from "./pages/superadmin/superadmin";
+
 // ── Layout administration ────────────────────────────────────────────────────
 function AppLayout({ children }) {
   const location = useLocation();
@@ -217,6 +220,11 @@ function App() {
 
           {/* Route par défaut */}
           <Route path="*" element={<Navigate to="/" />} />
+
+          {/* ── Espace Super Admin (indépendant, sans layout école) ── */}
+          <Route path="/superadmin" element={<SuperAdmin />} />
+          <Route path="/superAdmin" element={<SuperAdmin />} />
+          <Route path="/superadmin/*" element={<SuperAdmin />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
