@@ -24,14 +24,16 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Identifie l'école sur chaque requête via le sous-domaine.
 // /api/auth et /api/superadmin sont exclus (pas de tenant requis).
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/auth'))       return next();
-  if (req.path.startsWith('/api/superadmin')) return next();
+  if (req.path.startsWith('/api/auth'))            return next();
+  if (req.path.startsWith('/api/superadmin'))      return next();
+  if (req.path.startsWith('/api/school-requests')) return next();
   tenantMiddleware(req, res, next);
 });
 // ────────────────────────────────────────────────────────────
 
 app.use('/api/auth',            require('./routes/authRoutes'));
 app.use('/api/superadmin',      require('./routes/superAdminRoutes'));
+app.use('/api/school-requests', require('./routes/schoolRequestRoutes'));
 app.use('/api/eleves',          require('./routes/eleveRoutes'));
 app.use('/api/classes',         require('./routes/classeRoutes'));
 app.use('/api/presences',       require('./routes/presenceRoutes'));

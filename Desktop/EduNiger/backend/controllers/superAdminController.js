@@ -183,3 +183,68 @@ exports.updatePricing = async (req, res) => {
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
+
+
+// ── Profil du super admin connecté ───────────────────────────
+exports.getProfil = async (req, res) => {
+  try {
+    const [[admin]] = await db.query(
+      'SELECT id, name, email, role, last_login, created_at FROM super_admins WHERE id = ?',
+      [req.admin.id]
+    );
+    if (!admin) return res.status(404).json({ success: false, message: 'Profil introuvable' });
+    res.json({ success: true, admin });
+  } catch (err) {
+    console.error('Erreur getProfil:', err);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+};
+
+// ── Modifier nom / email ──────────────────────────────────────
+exports.updateProfil = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!name || !email)
+      return res.status(400).json({ success: false, message: 'Nom et email requis' });
+
+    // Vérifier unicité email (sauf soi-même)
+    const [exist] = await db.query(
+      'SELECT id FROM super_admins WHERE email = ? AND id != ?',
+      [email, req.admin.id]
+    );
+    if (exist.length)
+      return res.status(409).json({ success: false, message: 'Cet email est déjà utilisé' });
+
+    await db.query(
+      'UPDATE super_admins SET name = ?, email = ? WHERE id = ?',
+      [name, email, req.admin.id]
+    );
+    res.json({ success: true, message: 'Profil mis à jour' });
+  } catch (err) {
+    console.error('Erreur updateProfil:', err);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+};
+
+// ── Changer le mot de passe ───────────────────────────────────
+exports.changePassword = async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!current_password || !new_password)
+      return res.status(400).json({ success: false, message: 'Mot de passe actuel et nouveau requis' });
+    if (new_password.length < 8)
+      return res.status(400).json({ success: false, message: 'Le nouveau mot de passe doit faire au moins 8 caractères' });
+
+    const [[admin]] = await db.query('SELECT password FROM super_admins WHERE id = ?', [req.admin.id]);
+    const valid = await bcrypt.compare(current_password, admin.password);
+    if (!valid)
+      return res.status(401).json({ success: false, message: 'Mot de passe actuel incorrect' });
+
+    const hashed = await bcrypt.hash(new_password, 12);
+    await db.query('UPDATE super_admins SET password = ? WHERE id = ?', [hashed, req.admin.id]);
+    res.json({ success: true, message: 'Mot de passe modifié avec succès' });
+  } catch (err) {
+    console.error('Erreur changePassword:', err);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+};

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DemandesPage from "./DemandesPage";
 
 // ── API ───────────────────────────────────────────────────────
 const BASE = (import.meta.env.VITE_API_URL || "http://localhost:3000/api").replace(/\/api$/, "");
@@ -9,23 +10,25 @@ const authHdrs  = () => ({ "Content-Type": "application/json", Authorization: `B
 
 // ── Navigation superadmin ─────────────────────────────────────
 const NAV = [
-  { key: "dashboard", icon: "📊", label: "Tableau de bord",  section: "PRINCIPAL" },
-  { key: "schools",   icon: "🏫", label: "Écoles",           section: "GESTION" },
-  { key: "pricing",   icon: "💳", label: "Tarification",     section: "GESTION" },
+  { key: "dashboard", icon: "📊", label: "Tableau de bord",       section: "PRINCIPAL" },
+  { key: "demandes",  icon: "📬", label: "Demandes d'inscription", section: "GESTION", badge: true },
+  { key: "schools",   icon: "🏫", label: "Écoles",                 section: "GESTION" },
+  { key: "pricing",   icon: "💳", label: "Tarification",           section: "GESTION" },
 ];
 
 // ═══════════════════════════════════════════════════════════════
 //  LAYOUT SUPERADMIN (sidebar + topbar + contenu)
 // ═══════════════════════════════════════════════════════════════
-function SuperAdminLayout({ admin, onLogout, page, setPage, children }) {
+function SuperAdminLayout({ admin, onLogout, page, setPage, pendingCount, children }) {
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long", day: "numeric", month: "long", year: "numeric"
   });
 
   const pageTitles = {
-    dashboard: { title: "Tableau de bord",  subtitle: "Vue globale de la plateforme EduNiger" },
-    schools:   { title: "Gestion des Écoles", subtitle: "Onboarding, abonnements et accès" },
-    pricing:   { title: "Tarification",     subtitle: "Frais d'installation et abonnements annuels" },
+    dashboard: { title: "Tableau de bord",        subtitle: "Vue globale de la plateforme EduNiger" },
+    demandes:  { title: "Demandes d'inscription",  subtitle: "Nouvelles écoles souhaitant rejoindre EduNiger" },
+    schools:   { title: "Gestion des Écoles",      subtitle: "Onboarding, abonnements et accès" },
+    pricing:   { title: "Tarification",            subtitle: "Frais d'installation et abonnements annuels" },
   };
   const info = pageTitles[page] || pageTitles.dashboard;
 
@@ -61,6 +64,13 @@ function SuperAdminLayout({ admin, onLogout, page, setPage, children }) {
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
+                  {item.badge && pendingCount > 0 && (
+                    <span style={{
+                      background: "#E53E3E", color: "#fff", borderRadius: "50%",
+                      width: 20, height: 20, display: "flex", alignItems: "center",
+                      justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0,
+                    }}>{pendingCount}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -757,14 +767,24 @@ export default function SuperAdmin() {
     } catch { return { name: "Admin" }; }
   });
   const [page, setPage] = useState("dashboard");
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!admin) return;
+    const baseUrl = (import.meta.env.VITE_API_URL || "http://localhost:3000/api");
+    fetch(`${baseUrl}/school-requests/pending-count`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("sa_token")}` }
+    }).then(r => r.json()).then(d => { if (d.success) setPendingCount(d.count); }).catch(() => {});
+  }, [admin]);
 
   const logout = () => { localStorage.removeItem("sa_token"); setAdmin(null); };
 
   if (!admin) return <LoginPage onLogin={setAdmin} />;
 
   return (
-    <SuperAdminLayout admin={admin} onLogout={logout} page={page} setPage={setPage}>
+    <SuperAdminLayout admin={admin} onLogout={logout} page={page} setPage={setPage} pendingCount={pendingCount}>
       {page === "dashboard" && <DashboardPage />}
+      {page === "demandes"  && <DemandesPage onCountChange={setPendingCount} />}
       {page === "schools"   && <SchoolsPage />}
       {page === "pricing"   && <PricingPage />}
     </SuperAdminLayout>

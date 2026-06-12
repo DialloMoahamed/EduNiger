@@ -39,6 +39,7 @@ import Notifications from "./pages/Notifications";
 
 // ── Espace Super Admin ──────────────────────────────────────────────────────
 import SuperAdmin from "./pages/superadmin/superadmin";
+import Landing from "./pages/Landing";
 
 // ── Layout administration ────────────────────────────────────────────────────
 function AppLayout({ children }) {
@@ -225,6 +226,9 @@ function App() {
           <Route path="/superadmin" element={<SuperAdmin />} />
           <Route path="/superAdmin" element={<SuperAdmin />} />
           <Route path="/superadmin/*" element={<SuperAdmin />} />
+
+          {/* ── Page Landing publique ── */}
+          <Route path="/landing" element={<Landing />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
