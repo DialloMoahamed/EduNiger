@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import DemandesPage from "./DemandesPage";
+import ProfilPage from "./ProfilPage";
 
 // ── API ───────────────────────────────────────────────────────
 const BASE = (import.meta.env.VITE_API_URL || "http://localhost:3000/api").replace(/\/api$/, "");
@@ -14,6 +15,7 @@ const NAV = [
   { key: "demandes",  icon: "📬", label: "Demandes d'inscription", section: "GESTION", badge: true },
   { key: "schools",   icon: "🏫", label: "Écoles",                 section: "GESTION" },
   { key: "pricing",   icon: "💳", label: "Tarification",           section: "GESTION" },
+  { key: "profil",    icon: "👤", label: "Mon profil",             section: "COMPTE" },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -29,6 +31,7 @@ function SuperAdminLayout({ admin, onLogout, page, setPage, pendingCount, childr
     demandes:  { title: "Demandes d'inscription",  subtitle: "Nouvelles écoles souhaitant rejoindre EduNiger" },
     schools:   { title: "Gestion des Écoles",      subtitle: "Onboarding, abonnements et accès" },
     pricing:   { title: "Tarification",            subtitle: "Frais d'installation et abonnements annuels" },
+    profil:    { title: "Mon profil",              subtitle: "Modifier vos identifiants de connexion" },
   };
   const info = pageTitles[page] || pageTitles.dashboard;
 
@@ -116,6 +119,17 @@ function SuperAdminLayout({ admin, onLogout, page, setPage, pendingCount, childr
 //  PAGE LOGIN
 // ═══════════════════════════════════════════════════════════════
 function LoginPage({ onLogin }) {
+  // 3 vues : "login" | "forgot" | "reset"
+  const [view, setView] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("reset_token") ? "reset" : "login";
+  });
+  const resetToken = new URLSearchParams(window.location.search).get("reset_token") || "";
+
+  if (view === "forgot") return <ForgotView onBack={() => setView("login")} />;
+  if (view === "reset")  return <ResetView  token={resetToken} onBack={() => setView("login")} />;
+
+  // ── Vue connexion ──
   const [form, setForm]       = useState({ email: "", password: "" });
   const [err, setErr]         = useState("");
   const [loading, setLoading] = useState(false);
@@ -183,7 +197,13 @@ function LoginPage({ onLogin }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Mot de passe</label>
+            <label className="form-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Mot de passe</span>
+              <button onClick={() => setView("forgot")} style={{
+                background: "none", border: "none", color: "var(--primary)", cursor: "pointer",
+                fontSize: 12, fontWeight: 600, padding: 0,
+              }}>Mot de passe oublié ?</button>
+            </label>
             <div style={{ position: "relative" }}>
               <input type={showPwd ? "text" : "password"} className="form-input"
                 value={form.password}
@@ -204,6 +224,199 @@ function LoginPage({ onLogin }) {
           <div style={{ marginTop: 32, textAlign: "center", fontSize: 12, color: "var(--text-light)" }}>
             EduNiger SaaS — Tous droits réservés © 2026
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Vue : Mot de passe oublié ─────────────────────────────────
+function ForgotView({ onBack }) {
+  const [email, setEmail]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [err, setErr]         = useState("");
+
+  const submit = async () => {
+    if (!email.trim()) return setErr("Veuillez saisir votre email");
+    setLoading(true); setErr("");
+    try {
+      const r = await fetch(`${API}/forgot-password`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const d = await r.json();
+      if (d.success) setSent(true);
+      else setErr(d.message || "Erreur serveur");
+    } catch { setErr("Impossible de contacter le serveur"); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-left">
+        <div className="login-branding">
+          <div className="login-logo">📚</div>
+          <div className="login-brand-name">EduNiger</div>
+          <div className="login-brand-desc">Récupération de votre accès Super Admin.</div>
+        </div>
+      </div>
+      <div className="login-right">
+        <div className="login-form-wrap">
+          {sent ? (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 56, marginBottom: 20 }}>📧</div>
+              <h2 style={{ marginBottom: 12 }}>Email envoyé !</h2>
+              <p style={{ color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 32 }}>
+                Si l'adresse <strong>{email}</strong> correspond à un compte Super Admin, vous recevrez un lien de réinitialisation dans quelques minutes.
+              </p>
+              <p style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 24 }}>
+                Pensez à vérifier vos spams.
+              </p>
+              <button className="btn btn-secondary w-full" onClick={onBack}>
+                ← Retour à la connexion
+              </button>
+            </div>
+          ) : (
+            <>
+              <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, marginBottom: 24, padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                ← Retour
+              </button>
+              <h1 className="login-form-title">Mot de passe oublié</h1>
+              <p className="login-form-sub">Entrez votre email, nous vous enverrons un lien de réinitialisation.</p>
+
+              {err && <div className="alert alert-danger">⚠️ {err}</div>}
+
+              <div className="form-group">
+                <label className="form-label">Adresse email</label>
+                <input type="email" className="form-input" value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && submit()}
+                  placeholder="admin@eduniger.ne" autoFocus />
+              </div>
+
+              <button className="btn btn-primary w-full btn-lg mt-2" onClick={submit} disabled={loading}
+                style={{ justifyContent: "center" }}>
+                {loading ? "⏳ Envoi..." : "📧 Envoyer le lien"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Vue : Réinitialiser le mot de passe ───────────────────────
+function ResetView({ token, onBack }) {
+  const [form, setForm]       = useState({ new_password: "", confirm: "" });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone]       = useState(false);
+  const [err, setErr]         = useState("");
+  const [showPwd, setShowPwd] = useState({ new: false, confirm: false });
+
+  const submit = async () => {
+    if (!form.new_password || !form.confirm) return setErr("Veuillez remplir les deux champs");
+    if (form.new_password !== form.confirm) return setErr("Les mots de passe ne correspondent pas");
+    if (form.new_password.length < 8) return setErr("Minimum 8 caractères");
+    setLoading(true); setErr("");
+    try {
+      const r = await fetch(`${API}/reset-password`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password: form.new_password }),
+      });
+      const d = await r.json();
+      if (d.success) {
+        setDone(true);
+        // Nettoyer le token de l'URL
+        window.history.replaceState({}, "", window.location.pathname);
+      } else setErr(d.message || "Lien invalide ou expiré");
+    } catch { setErr("Impossible de contacter le serveur"); }
+    setLoading(false);
+  };
+
+  // Indicateur force
+  const pwd = form.new_password;
+  let score = 0;
+  if (pwd.length >= 8)           score++;
+  if (pwd.length >= 12)          score++;
+  if (/[A-Z]/.test(pwd))         score++;
+  if (/[0-9]/.test(pwd))         score++;
+  if (/[^A-Za-z0-9]/.test(pwd))  score++;
+  const colors = ["#E53E3E","#DD6B20","#D69E2E","#38A169","#0A5C36"];
+  const labels = ["Très faible","Faible","Moyen","Fort","Très fort"];
+
+  return (
+    <div className="login-page">
+      <div className="login-left">
+        <div className="login-branding">
+          <div className="login-logo">📚</div>
+          <div className="login-brand-name">EduNiger</div>
+          <div className="login-brand-desc">Choisissez un nouveau mot de passe sécurisé.</div>
+        </div>
+      </div>
+      <div className="login-right">
+        <div className="login-form-wrap">
+          {done ? (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 56, marginBottom: 20 }}>✅</div>
+              <h2 style={{ marginBottom: 12 }}>Mot de passe modifié !</h2>
+              <p style={{ color: "var(--text-secondary)", marginBottom: 32, lineHeight: 1.7 }}>
+                Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.
+              </p>
+              <button className="btn btn-primary w-full" onClick={onBack} style={{ justifyContent: "center" }}>
+                → Se connecter
+              </button>
+            </div>
+          ) : (
+            <>
+              <h1 className="login-form-title">Nouveau mot de passe</h1>
+              <p className="login-form-sub">Choisissez un mot de passe d'au moins 8 caractères.</p>
+
+              {err && <div className="alert alert-danger">⚠️ {err}</div>}
+
+              {[
+                { key: "new_password", label: "Nouveau mot de passe" },
+                { key: "confirm",      label: "Confirmer le mot de passe" },
+              ].map(({ key, label }) => (
+                <div className="form-group" key={key}>
+                  <label className="form-label">{label}</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPwd[key === "new_password" ? "new" : "confirm"] ? "text" : "password"}
+                      className="form-input"
+                      value={form[key]}
+                      onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+                      onKeyDown={e => e.key === "Enter" && submit()}
+                      placeholder="••••••••"
+                      style={{ paddingRight: 40 }}
+                      autoFocus={key === "new_password"}
+                    />
+                    <button
+                      onClick={() => setShowPwd(p => ({ ...p, [key === "new_password" ? "new" : "confirm"]: !p[key === "new_password" ? "new" : "confirm"] }))}
+                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--text-muted)" }}
+                      tabIndex={-1}
+                    >{showPwd[key === "new_password" ? "new" : "confirm"] ? "🙈" : "👁️"}</button>
+                  </div>
+                  {key === "new_password" && pwd && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+                        {[0,1,2,3,4].map(i => (
+                          <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i < score ? colors[Math.min(score-1,4)] : "var(--border)", transition: "background 0.3s" }} />
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 11, color: colors[Math.min(score-1,4)], fontWeight: 600 }}>{labels[Math.min(score-1,4)]}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <button className="btn btn-primary w-full btn-lg mt-2" onClick={submit} disabled={loading}
+                style={{ justifyContent: "center" }}>
+                {loading ? "⏳ Enregistrement..." : "🔒 Réinitialiser le mot de passe"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -787,6 +1000,7 @@ export default function SuperAdmin() {
       {page === "demandes"  && <DemandesPage onCountChange={setPendingCount} />}
       {page === "schools"   && <SchoolsPage />}
       {page === "pricing"   && <PricingPage />}
+      {page === "profil"    && <ProfilPage />}
     </SuperAdminLayout>
   );
 }

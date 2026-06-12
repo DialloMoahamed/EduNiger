@@ -32,4 +32,8 @@ router.post('/schools/:id/toggle',          authSuperAdmin, ctrl.toggleSchool);
 router.get('/pricing',                      authSuperAdmin, ctrl.getPricing);
 router.put('/pricing',                      authSuperAdmin, ctrl.updatePricing);
 
+router.get("/profil",          authSuperAdmin, ctrl.getProfil);
+router.put("/profil",          authSuperAdmin, ctrl.updateProfil);
+router.put("/profil/password", authSuperAdmin, ctrl.changePassword);
+
 module.exports = router;

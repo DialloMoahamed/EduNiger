@@ -183,8 +183,6 @@ exports.updatePricing = async (req, res) => {
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
-
-
 // ── Profil du super admin connecté ───────────────────────────
 exports.getProfil = async (req, res) => {
   try {
